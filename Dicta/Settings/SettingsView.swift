@@ -119,6 +119,9 @@ struct SettingsView: View {
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.secondary)
                     }
+                    Text("Higher values ignore background noise but may miss quiet speech.")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
 
                     HStack {
                         Text("Speech grace period")

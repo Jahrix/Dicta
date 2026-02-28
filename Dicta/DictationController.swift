@@ -400,19 +400,19 @@ final class DictationController: ObservableObject {
         }
         switch state {
         case .recording:
-            hudController.show(text: "Recording…")
+            hudController.show(text: "Listening…", mode: .listening)
         case .stopping:
-            hudController.show(text: "Stopping…")
+            hudController.show(text: "Stopping…", mode: .processing)
         case .transcribing:
-            hudController.show(text: "Transcribing…")
+            hudController.show(text: "Transcribing…", mode: .processing)
         case .inserting:
-            hudController.show(text: "Inserting…")
+            hudController.show(text: "Inserting…", mode: .processing)
         case .armed:
-            hudController.show(text: "Dicta Ready")
+            hudController.show(text: "Dicta Ready", mode: .neutral)
         case .idle:
             hudController.hide()
         case .error:
-            hudController.show(text: "Error")
+            hudController.show(text: "Error", mode: .error)
         }
     }
 

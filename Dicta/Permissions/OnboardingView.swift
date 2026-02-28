@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct OnboardingView: View {
     @ObservedObject var model: SettingsModel
@@ -14,22 +15,28 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Welcome to Dicta")
                 .font(.system(size: 22, weight: .bold))
-            Text("Dicta needs a few permissions to work everywhere.")
+            Text("Dicta needs a few permissions to work everywhere. You can continue without them and enable later.")
                 .font(.system(size: 13))
 
-            permissionRow(title: "Microphone", status: microphoneStatus, actionTitle: "Grant") {
+            permissionRow(title: "Microphone", status: microphoneStatus, actionTitle: "Grant", openSettings: {
+                permissions.openSystemSettings(for: .microphone)
+            }) {
                 Task {
                     microphoneStatus = await permissions.requestMicrophone()
                 }
             }
 
-            permissionRow(title: "Speech Recognition", status: speechStatus, actionTitle: "Grant") {
+            permissionRow(title: "Speech Recognition", status: speechStatus, actionTitle: "Grant", openSettings: {
+                permissions.openSystemSettings(for: .speech)
+            }) {
                 Task {
                     speechStatus = await permissions.requestSpeech()
                 }
             }
 
-            permissionRow(title: "Accessibility (optional)", status: accessibilityStatus, actionTitle: "Enable") {
+            permissionRow(title: "Accessibility (optional)", status: accessibilityStatus, actionTitle: "Enable", openSettings: {
+                permissions.openSystemSettings(for: .accessibility)
+            }) {
                 permissions.requestAccessibilityPrompt()
                 accessibilityStatus = permissions.accessibilityStatus()
             }
@@ -38,10 +45,7 @@ struct OnboardingView: View {
 
             HStack {
                 Spacer()
-                Button("Open System Settings") {
-                    permissions.openSystemSettings(for: .microphone)
-                }
-                Button("Done") {
+                Button("Continue") {
                     model.hasCompletedOnboarding = true
                     onComplete()
                 }
@@ -54,9 +58,14 @@ struct OnboardingView: View {
             speechStatus = permissions.speechStatus()
             accessibilityStatus = permissions.accessibilityStatus()
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            microphoneStatus = permissions.microphoneStatus()
+            speechStatus = permissions.speechStatus()
+            accessibilityStatus = permissions.accessibilityStatus()
+        }
     }
 
-    private func permissionRow(title: String, status: PermissionStatus, actionTitle: String, action: @escaping () -> Void) -> some View {
+    private func permissionRow(title: String, status: PermissionStatus, actionTitle: String, openSettings: @escaping () -> Void, action: @escaping () -> Void) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -68,6 +77,7 @@ struct OnboardingView: View {
             Spacer()
             Button(actionTitle, action: action)
                 .disabled(status == .granted)
+            Button("Open Settings", action: openSettings)
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .windowBackgroundColor)))
