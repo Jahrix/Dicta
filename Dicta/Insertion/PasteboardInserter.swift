@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import ApplicationServices
 
 final class PasteboardInserter: TextInserter {
     private let logger: DiagnosticsLogger
@@ -12,31 +13,52 @@ final class PasteboardInserter: TextInserter {
         let pasteboard = NSPasteboard.general
         let previousItems = restoreClipboard ? pasteboard.pasteboardItems : nil
 
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
-
-        try await Task.sleep(nanoseconds: 80_000_000)
-        guard let frontmost = NSWorkspace.shared.frontmostApplication else {
-            throw InsertionError.noFocusedApp
-        }
-        if frontmost.bundleIdentifier == Bundle.main.bundleIdentifier {
-            throw InsertionError.frontmostIsDicta
-        }
-
-        simulatePasteShortcut()
-        logger.log(.insertion, "Pasteboard insertion triggered")
-
-        if restoreClipboard {
-            try await Task.sleep(nanoseconds: 150_000_000)
+        logger.log(.insertion, "Pasteboard insertion starting (chars: \(text.count), restoreClipboard: \(restoreClipboard))")
+        do {
             pasteboard.clearContents()
-            if let previousItems {
-                pasteboard.writeObjects(previousItems)
+            guard pasteboard.setString(text, forType: .string) else {
+                throw InsertionError.insertionFailed
             }
+
+            try await Task.sleep(nanoseconds: 100_000_000)
+            guard AXIsProcessTrusted() else {
+                throw InsertionError.accessibilityDenied
+            }
+            guard let frontmost = NSWorkspace.shared.frontmostApplication else {
+                throw InsertionError.noFocusedApp
+            }
+            if frontmost.bundleIdentifier == Bundle.main.bundleIdentifier {
+                throw InsertionError.frontmostIsDicta
+            }
+
+            guard simulatePasteShortcut() else {
+                throw InsertionError.insertionFailed
+            }
+            logger.log(.insertion, "Pasteboard insertion triggered for \(frontmost.bundleIdentifier ?? "unknown")")
+
+            if restoreClipboard {
+                try await Task.sleep(nanoseconds: 150_000_000)
+                pasteboard.clearContents()
+                if let previousItems {
+                    pasteboard.writeObjects(previousItems)
+                }
+                logger.log(.insertion, "Clipboard restored after pasteboard insertion")
+            }
+        } catch {
+            if restoreClipboard {
+                try? await Task.sleep(nanoseconds: 50_000_000)
+                pasteboard.clearContents()
+                if let previousItems {
+                    pasteboard.writeObjects(previousItems)
+                }
+                logger.log(.insertion, "Clipboard restored after insertion failure")
+            }
+            throw error
         }
     }
 
-    private func simulatePasteShortcut() {
-        guard let source = CGEventSource(stateID: .combinedSessionState) else { return }
+    private func simulatePasteShortcut() -> Bool {
+        guard let source = CGEventSource(stateID: .combinedSessionState) else { return false }
 
         let keyV: CGKeyCode = 9 // V
         let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyV, keyDown: true)
@@ -44,7 +66,9 @@ final class PasteboardInserter: TextInserter {
         let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyV, keyDown: false)
         keyUp?.flags = .maskCommand
 
-        keyDown?.post(tap: .cghidEventTap)
-        keyUp?.post(tap: .cghidEventTap)
+        guard let keyDown, let keyUp else { return false }
+        keyDown.post(tap: .cghidEventTap)
+        keyUp.post(tap: .cghidEventTap)
+        return true
     }
 }

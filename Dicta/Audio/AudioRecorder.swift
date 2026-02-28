@@ -5,6 +5,8 @@ struct AudioRecorderStats: Sendable {
     let framesReceived: Int64
     let bytesWritten: Int64
     let peakRMS: Double
+    let currentRMS: Double
+    let lastNonSilentAt: Date?
     let lastFrameAt: Date?
     let startTime: Date?
     let sampleRate: Double
@@ -28,17 +30,21 @@ final class AudioRecorder {
     private let sessionGuard = AudioSessionGuard()
     private let logger: DiagnosticsLogger
     var onConfigurationChange: (() -> Void)?
+    var vadThresholdRMS: Double = 0.015
 
     private let targetFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16_000, channels: 1, interleaved: true)!
     private let statsLock = NSLock()
     private var stats = AudioRecorderStats(framesReceived: 0,
                                           bytesWritten: 0,
                                           peakRMS: 0,
+                                          currentRMS: 0,
+                                          lastNonSilentAt: nil,
                                           lastFrameAt: nil,
                                           startTime: nil,
                                           sampleRate: 16_000,
                                           channels: 1)
     private var lastTapLogAt: Date?
+    private var lastNonSilentLogAt: Date?
 
     init(logger: DiagnosticsLogger) {
         self.logger = logger
@@ -193,11 +199,14 @@ final class AudioRecorder {
         stats = AudioRecorderStats(framesReceived: 0,
                                    bytesWritten: 0,
                                    peakRMS: 0,
+                                   currentRMS: 0,
+                                   lastNonSilentAt: nil,
                                    lastFrameAt: nil,
                                    startTime: Date(),
                                    sampleRate: sampleRate,
                                    channels: channels)
         lastTapLogAt = nil
+        lastNonSilentLogAt = nil
         statsLock.unlock()
     }
 
@@ -209,6 +218,8 @@ final class AudioRecorder {
         stats = AudioRecorderStats(framesReceived: newFrames,
                                    bytesWritten: stats.bytesWritten,
                                    peakRMS: stats.peakRMS,
+                                   currentRMS: stats.currentRMS,
+                                   lastNonSilentAt: stats.lastNonSilentAt,
                                    lastFrameAt: now,
                                    startTime: stats.startTime,
                                    sampleRate: stats.sampleRate,
@@ -236,9 +247,13 @@ final class AudioRecorder {
         let newFrames = stats.framesReceived
         let newBytes = stats.bytesWritten + (Int64(frameLength) * bytesPerFrame)
         let newPeak = max(stats.peakRMS, rms)
+        let isNonSilent = rms >= vadThresholdRMS
+        let lastNonSilentAt = isNonSilent ? now : stats.lastNonSilentAt
         stats = AudioRecorderStats(framesReceived: newFrames,
                                    bytesWritten: newBytes,
                                    peakRMS: newPeak,
+                                   currentRMS: rms,
+                                   lastNonSilentAt: lastNonSilentAt,
                                    lastFrameAt: now,
                                    startTime: stats.startTime,
                                    sampleRate: stats.sampleRate,
@@ -246,7 +261,14 @@ final class AudioRecorder {
         let shouldLog = lastTapLogAt.map { now.timeIntervalSince($0) > 1.0 } ?? true
         if shouldLog {
             lastTapLogAt = now
-            logger.log(.audio, "Audio tap frames=\(newFrames) bytes=\(newBytes) peakRMS=\(String(format: "%.4f", newPeak))", verbose: true)
+            logger.log(.audio, "Audio tap frames=\(newFrames) bytes=\(newBytes) rms=\(String(format: "%.4f", rms)) peakRMS=\(String(format: "%.4f", newPeak)) threshold=\(String(format: "%.4f", vadThresholdRMS))", verbose: true)
+        }
+        if isNonSilent {
+            let shouldLogNonSilent = lastNonSilentLogAt.map { now.timeIntervalSince($0) > 1.0 } ?? true
+            if shouldLogNonSilent {
+                lastNonSilentLogAt = now
+                logger.log(.audio, "VAD non-silent detected (rms=\(String(format: "%.4f", rms)))", verbose: true)
+            }
         }
         statsLock.unlock()
     }

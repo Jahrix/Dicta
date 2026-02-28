@@ -95,6 +95,8 @@ struct SettingsSnapshot: Codable {
     let insertionTimeoutSeconds: Double
     let silenceTimeoutSeconds: Double
     let noFramesTimeoutSeconds: Double
+    let vadThresholdRMS: Double
+    let vadGraceSeconds: Double
     let restoreClipboard: Bool
     let preferOnDevice: Bool
     let showHUD: Bool
@@ -112,6 +114,8 @@ struct SettingsSnapshot: Codable {
             insertionTimeoutSeconds: defaults.double(forKey: SettingsModel.Keys.insertionTimeoutSeconds),
             silenceTimeoutSeconds: defaults.double(forKey: SettingsModel.Keys.silenceTimeoutSeconds),
             noFramesTimeoutSeconds: defaults.double(forKey: SettingsModel.Keys.noFramesTimeoutSeconds),
+            vadThresholdRMS: defaults.double(forKey: SettingsModel.Keys.vadThresholdRMS),
+            vadGraceSeconds: defaults.double(forKey: SettingsModel.Keys.vadGraceSeconds),
             restoreClipboard: defaults.bool(forKey: SettingsModel.Keys.restoreClipboard),
             preferOnDevice: defaults.bool(forKey: SettingsModel.Keys.preferOnDevice),
             showHUD: defaults.bool(forKey: SettingsModel.Keys.showHUD),

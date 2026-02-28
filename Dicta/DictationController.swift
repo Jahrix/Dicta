@@ -21,6 +21,9 @@ final class DictationController: ObservableObject {
     private var currentRecordingURL: URL?
     private var lastRecordingInfo: RecordingInfo?
     private var lastTranscriptionDuration: TimeInterval?
+    private var lastTranscriptionErrorDetails: String = "none"
+    private var lastInsertionMode: String = "none"
+    private var lastInsertionResult: String = "none"
     private var transcriptionTask: Task<Void, Never>?
     private var insertionTask: Task<Void, Never>?
     private var maxRecordingTask: Task<Void, Never>?
@@ -48,9 +51,17 @@ final class DictationController: ObservableObject {
             }
         }
 
+        audioRecorder.vadThresholdRMS = settings.vadThresholdRMS
+
         settings.$verboseLogging
             .sink { [weak self] enabled in
                 self?.logger.verboseEnabled = enabled
+            }
+            .store(in: &cancellables)
+
+        settings.$vadThresholdRMS
+            .sink { [weak self] value in
+                self?.audioRecorder.vadThresholdRMS = value
             }
             .store(in: &cancellables)
 
@@ -138,6 +149,7 @@ final class DictationController: ObservableObject {
     private func stopRecordingFlow(reason: String) {
         maxRecordingTask?.cancel()
         noFramesTask?.cancel()
+        logger.log(.audio, "Stop recording requested: \(reason)")
         transition(to: .stopping, reason: reason)
         updateHUD(for: .stopping)
         NSSound.beep()
@@ -152,6 +164,7 @@ final class DictationController: ObservableObject {
             do {
                 let recordingInfo = try await self.audioRecorder.stopRecording()
                 DiagnosticsManager.shared.addRecentAudio(recordingInfo.url)
+                self.logger.log(.audio, "Stop recording finished (file: \(recordingInfo.url.lastPathComponent), duration: \(String(format: "%.2f", recordingInfo.duration))s, bytes: \(recordingInfo.fileSizeBytes), frames: \(recordingInfo.stats.framesReceived))")
                 await MainActor.run {
                     self.currentRecordingURL = nil
                     self.lastRecordingInfo = recordingInfo
@@ -178,7 +191,7 @@ final class DictationController: ObservableObject {
 
     private func performTranscription(url: URL, languageIdentifier: String, preferOnDevice: Bool, timeout: Double) async {
         do {
-            logger.log(.transcription, "Transcription started for \(url.lastPathComponent)")
+            logger.log(.transcription, "Transcription started for \(url.lastPathComponent) (locale: \(languageIdentifier), preferOnDevice: \(preferOnDevice))")
             let locale = Locale(identifier: languageIdentifier)
             let start = Date()
             let result = try await withTimeout(seconds: timeout, timeoutError: TranscriptionError.timeout) {
@@ -187,13 +200,17 @@ final class DictationController: ObservableObject {
             let duration = Date().timeIntervalSince(start)
             await MainActor.run {
                 self.lastTranscriptionDuration = duration
+                self.lastTranscriptionErrorDetails = "none"
             }
             logger.log(.transcription, "Transcription finished (length: \(result.text.count))")
             await MainActor.run {
                 self.handleTranscriptionSuccess(result)
             }
         } catch {
+            let details = detailedErrorDescription(error)
+            logger.log(.transcription, "Transcription failed: \(details)")
             await MainActor.run {
+                self.lastTranscriptionErrorDetails = details
                 self.fail("Transcription failed: \(error.localizedDescription)")
             }
         }
@@ -201,6 +218,13 @@ final class DictationController: ObservableObject {
 
     private func handleTranscriptionSuccess(_ result: TranscriptionResult) {
         let cleanText = normalize(text: result.text)
+        guard !cleanText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            lastTranscriptionErrorDetails = "No speech detected"
+            lastInsertionMode = settings.insertionMode.rawValue
+            lastInsertionResult = "skipped: no speech detected"
+            fail("No speech detected")
+            return
+        }
         lastTranscript = cleanText
         transition(to: .inserting, reason: "Transcription complete")
         updateHUD(for: .inserting)
@@ -208,24 +232,32 @@ final class DictationController: ObservableObject {
         let insertionMode = settings.insertionMode
         let restoreClipboard = settings.restoreClipboard
         let insertionTimeout = settings.insertionTimeoutSeconds
+        lastInsertionMode = insertionMode.rawValue
+        lastInsertionResult = "pending"
 
         insertionTask?.cancel()
         insertionTask = Task.detached { [weak self] in
             guard let self else { return }
             do {
+                self.logger.log(.insertion, "Insertion started (mode: \(insertionMode.rawValue), chars: \(cleanText.count))")
                 try await self.withTimeout(seconds: insertionTimeout, timeoutError: InsertionError.timeout) {
                     try await self.insertionManager.insert(text: cleanText, mode: insertionMode, restoreClipboard: restoreClipboard)
                 }
                 await MainActor.run {
+                    self.lastInsertionResult = "success"
                     self.transition(to: .idle, reason: "Insertion complete")
                     self.updateHUD(for: .idle)
                 }
+                self.logger.log(.insertion, "Insertion completed successfully")
             } catch {
+                let details = self.detailedErrorDescription(error)
                 await MainActor.run {
                     let message = "Insertion failed: \(error.localizedDescription)"
+                    self.lastInsertionResult = "failed: \(details)"
                     self.fail(message)
                     NotificationPresenter.shared.notify(title: "Dicta Insert Failed", body: message)
                 }
+                self.logger.log(.insertion, "Insertion failed: \(details)")
             }
         }
     }
@@ -304,18 +336,20 @@ final class DictationController: ObservableObject {
     }
 
     private func runWatchdogTick() {
-        if case .recording = state {
+        if case .recording(let startedAt) = state {
             let maxAllowed = settings.maxRecordingSeconds + 5
             if stateDuration() > maxAllowed {
                 fail("Watchdog: recording timeout")
                 return
             }
             let stats = audioRecorder.currentStats()
-            if stats.framesReceived > 0, let lastFrameAt = stats.lastFrameAt {
-                let silenceThreshold = settings.silenceTimeoutSeconds
-                if Date().timeIntervalSince(lastFrameAt) > silenceThreshold {
-                    stopRecordingFlow(reason: "Silence timeout (\(Int(silenceThreshold))s)")
-                }
+            let grace = settings.vadGraceSeconds
+            if Date().timeIntervalSince(startedAt) < grace { return }
+            let lastNonSilentAt = stats.lastNonSilentAt ?? startedAt
+            let silenceThreshold = settings.silenceTimeoutSeconds
+            if Date().timeIntervalSince(lastNonSilentAt) > silenceThreshold {
+                stopRecordingFlow(reason: "VAD silence timeout (\(Int(silenceThreshold))s)")
+                return
             }
         }
         if state == .transcribing {
@@ -386,19 +420,30 @@ final class DictationController: ObservableObject {
         Dicta Version: \(version) (\(build))
         State: \(stateSummary)
         Hotkey: \(hotkeySummary)
+        Language Identifier: \(settings.languageIdentifier)
+        Insertion Mode: \(settings.insertionMode.rawValue)
         Permissions: \(permissionsSummary)
         Audio Device: \(deviceName)
         Sample Rate: \(stats.sampleRate)
         Frames Received: \(stats.framesReceived)
         Bytes Written: \(stats.bytesWritten)
         Peak RMS: \(String(format: "%.4f", stats.peakRMS))
+        Current RMS: \(String(format: "%.4f", stats.currentRMS))
+        Last Non-Silent At: \(stats.lastNonSilentAt?.description ?? "n/a")
         Last Frame At: \(stats.lastFrameAt?.description ?? "n/a")
         Recording Duration: \(String(format: "%.2f", duration))s
         Audio File Size: \(fileSize) bytes
         Transcription Duration: \(String(format: "%.2f", transcriptionDuration))s
         Transcript Length: \(lastTranscript.count)
+        Last Transcription Error: \(lastTranscriptionErrorDetails)
+        Last Insertion Result: \(lastInsertionResult) (mode: \(lastInsertionMode))
         Last Error: \(lastError.isEmpty ? "none" : lastError)
         """
+    }
+
+    private func detailedErrorDescription(_ error: Error) -> String {
+        let nsError = error as NSError
+        return "\(nsError.domain) (\(nsError.code)): \(nsError.localizedDescription)"
     }
 
     private func withTimeout<T>(seconds: Double, timeoutError: Error, operation: @escaping () async throws -> T) async throws -> T {

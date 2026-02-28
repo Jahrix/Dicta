@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import Speech
 
 @MainActor
 final class SettingsModel: ObservableObject {
@@ -11,6 +12,8 @@ final class SettingsModel: ObservableObject {
     @Published var insertionTimeoutSeconds: Double { didSet { defaults.set(insertionTimeoutSeconds, forKey: Keys.insertionTimeoutSeconds) } }
     @Published var silenceTimeoutSeconds: Double { didSet { defaults.set(silenceTimeoutSeconds, forKey: Keys.silenceTimeoutSeconds) } }
     @Published var noFramesTimeoutSeconds: Double { didSet { defaults.set(noFramesTimeoutSeconds, forKey: Keys.noFramesTimeoutSeconds) } }
+    @Published var vadThresholdRMS: Double { didSet { defaults.set(vadThresholdRMS, forKey: Keys.vadThresholdRMS) } }
+    @Published var vadGraceSeconds: Double { didSet { defaults.set(vadGraceSeconds, forKey: Keys.vadGraceSeconds) } }
     @Published var restoreClipboard: Bool { didSet { defaults.set(restoreClipboard, forKey: Keys.restoreClipboard) } }
     @Published var preferOnDevice: Bool { didSet { defaults.set(preferOnDevice, forKey: Keys.preferOnDevice) } }
     @Published var showHUD: Bool { didSet { defaults.set(showHUD, forKey: Keys.showHUD) } }
@@ -24,12 +27,14 @@ final class SettingsModel: ObservableObject {
             Keys.hotkeyKeyCode: Int(Hotkey.default.keyCode),
             Keys.hotkeyModifiers: Int(Hotkey.default.modifiers),
             Keys.insertionMode: InsertionMode.pasteboard.rawValue,
-            Keys.languageIdentifier: Locale.current.identifier,
+            Keys.languageIdentifier: Self.defaultLanguageIdentifier(),
             Keys.maxRecordingSeconds: 60.0,
             Keys.transcriptionTimeoutSeconds: 20.0,
             Keys.insertionTimeoutSeconds: 2.0,
             Keys.silenceTimeoutSeconds: 3.0,
             Keys.noFramesTimeoutSeconds: 0.5,
+            Keys.vadThresholdRMS: 0.015,
+            Keys.vadGraceSeconds: 0.6,
             Keys.restoreClipboard: true,
             Keys.preferOnDevice: true,
             Keys.showHUD: true,
@@ -41,12 +46,14 @@ final class SettingsModel: ObservableObject {
         let modifiers = defaults.integer(forKey: Keys.hotkeyModifiers)
         hotkey = Hotkey(keyCode: UInt32(keyCode), modifiers: UInt32(modifiers))
         insertionMode = InsertionMode(rawValue: defaults.string(forKey: Keys.insertionMode) ?? InsertionMode.pasteboard.rawValue) ?? .pasteboard
-        languageIdentifier = defaults.string(forKey: Keys.languageIdentifier) ?? Locale.current.identifier
+        languageIdentifier = defaults.string(forKey: Keys.languageIdentifier) ?? Self.defaultLanguageIdentifier()
         maxRecordingSeconds = defaults.double(forKey: Keys.maxRecordingSeconds)
         transcriptionTimeoutSeconds = defaults.double(forKey: Keys.transcriptionTimeoutSeconds)
         insertionTimeoutSeconds = defaults.double(forKey: Keys.insertionTimeoutSeconds)
         silenceTimeoutSeconds = defaults.double(forKey: Keys.silenceTimeoutSeconds)
         noFramesTimeoutSeconds = defaults.double(forKey: Keys.noFramesTimeoutSeconds)
+        vadThresholdRMS = defaults.double(forKey: Keys.vadThresholdRMS)
+        vadGraceSeconds = defaults.double(forKey: Keys.vadGraceSeconds)
         restoreClipboard = defaults.bool(forKey: Keys.restoreClipboard)
         preferOnDevice = defaults.bool(forKey: Keys.preferOnDevice)
         showHUD = defaults.bool(forKey: Keys.showHUD)
@@ -69,11 +76,49 @@ final class SettingsModel: ObservableObject {
         static let insertionTimeoutSeconds = "dicta.insertionTimeoutSeconds"
         static let silenceTimeoutSeconds = "dicta.silenceTimeoutSeconds"
         static let noFramesTimeoutSeconds = "dicta.noFramesTimeoutSeconds"
+        static let vadThresholdRMS = "dicta.vadThresholdRMS"
+        static let vadGraceSeconds = "dicta.vadGraceSeconds"
         static let restoreClipboard = "dicta.restoreClipboard"
         static let preferOnDevice = "dicta.preferOnDevice"
         static let showHUD = "dicta.showHUD"
         static let verboseLogging = "dicta.verboseLogging"
         static let hasCompletedOnboarding = "dicta.hasCompletedOnboarding"
+    }
+
+    private static func defaultLanguageIdentifier() -> String {
+        let supported = Set(SFSpeechRecognizer.supportedLocales().map { normalizeLocaleIdentifier($0.identifier) })
+        let current = normalizeLocaleIdentifier(Locale.current.identifier)
+        if supported.contains(current) {
+            return current
+        }
+
+        let languageCode = Locale.current.languageCode ?? "en"
+        if let regionCode = Locale.current.regionCode {
+            let candidate = normalizeLocaleIdentifier("\(languageCode)-\(regionCode)")
+            if supported.contains(candidate) {
+                return candidate
+            }
+        }
+
+        let languagePrefix = "\(languageCode)-"
+        if let match = supported.sorted().first(where: { $0.hasPrefix(languagePrefix) }) {
+            return match
+        }
+
+        if supported.contains("en-US") {
+            return "en-US"
+        }
+
+        return supported.sorted().first ?? current
+    }
+
+    private static func normalizeLocaleIdentifier(_ identifier: String) -> String {
+        let normalized = identifier.replacingOccurrences(of: "_", with: "-")
+        let parts = normalized.split(separator: "-")
+        guard parts.count >= 2 else { return normalized }
+        let language = parts[0].lowercased()
+        let region = parts[1].uppercased()
+        return "\(language)-\(region)"
     }
 }
 

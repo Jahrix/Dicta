@@ -12,7 +12,11 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
         guard SFSpeechRecognizer.authorizationStatus() == .authorized else {
             throw TranscriptionError.permissionDenied
         }
-        guard let recognizer = SFSpeechRecognizer(locale: locale) else {
+        let resolvedLocale = resolveLocale(from: locale)
+        if resolvedLocale.identifier != locale.identifier {
+            logger.log(.transcription, "Requested locale \(locale.identifier) not supported; using \(resolvedLocale.identifier)")
+        }
+        guard let recognizer = SFSpeechRecognizer(locale: resolvedLocale) else {
             throw TranscriptionError.recognizerUnavailable
         }
         guard recognizer.isAvailable else {
@@ -23,6 +27,7 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
         }
 
         let request = SFSpeechURLRecognitionRequest(url: url)
+        request.taskHint = .dictation
         request.shouldReportPartialResults = false
         if preferOnDevice && recognizer.supportsOnDeviceRecognition {
             request.requiresOnDeviceRecognition = true
@@ -34,12 +39,7 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
             try await withCheckedThrowingContinuation { continuation in
                 let resumeBox = SingleResumeBox(continuation)
                 let task = recognizer.recognitionTask(with: request) { result, error in
-                    if let error {
-                        resumeBox.resume(throwing: self.map(error: error))
-                        return
-                    }
-                    guard let result else { return }
-                    if result.isFinal {
+                    if let result, result.isFinal {
                         let text = result.bestTranscription.formattedString.trimmingCharacters(in: .whitespacesAndNewlines)
                         if text.isEmpty {
                             resumeBox.resume(throwing: TranscriptionError.noSpeechDetected)
@@ -48,6 +48,14 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
                             let durations = result.bestTranscription.segments.map { $0.duration }
                             resumeBox.resume(returning: TranscriptionResult(text: text, confidence: confidence, segmentDurations: durations))
                         }
+                        if let error {
+                            self.logger.log(.transcription, "Recognition finished with error: \(error.localizedDescription)")
+                        }
+                        return
+                    }
+                    if let error {
+                        resumeBox.resume(throwing: self.map(error: error))
+                        return
                     }
                 }
                 taskBox.set(task)
@@ -62,6 +70,7 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
         // Map some common conditions without relying on private Speech error codes/domains.
         // Network and permission issues are common; otherwise, fall back to underlying.
         let description = nsError.localizedDescription
+        let codeInfo = "\(nsError.domain) (\(nsError.code))"
         // Heuristic mapping based on messages Apple emits.
         let lower = description.lowercased()
         if lower.contains("not authorized") || lower.contains("no authorization") || lower.contains("permission") {
@@ -81,7 +90,40 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
         if lower.contains("on-device") && lower.contains("unsupported") {
             return TranscriptionError.onDeviceUnavailable
         }
-        return TranscriptionError.underlying(description)
+        return TranscriptionError.underlying("\(description) [\(codeInfo)]")
+    }
+
+    private func resolveLocale(from locale: Locale) -> Locale {
+        let supported = SFSpeechRecognizer.supportedLocales()
+        if supported.contains(locale) {
+            return locale
+        }
+
+        let identifier = locale.identifier
+        if identifier.contains("_") {
+            let normalized = identifier.replacingOccurrences(of: "_", with: "-")
+            let normalizedLocale = Locale(identifier: normalized)
+            if supported.contains(normalizedLocale) {
+                return normalizedLocale
+            }
+        }
+
+        if let languageCode = locale.languageCode {
+            let preferredRegion = locale.regionCode ?? Locale.current.regionCode
+            if let preferredRegion,
+               let regionalMatch = supported.first(where: { $0.languageCode == languageCode && $0.regionCode == preferredRegion }) {
+                return regionalMatch
+            }
+            if let languageMatch = supported.first(where: { $0.languageCode == languageCode }) {
+                return languageMatch
+            }
+        }
+
+        if let currentMatch = supported.first(where: { $0.identifier == Locale.current.identifier || $0.identifier == Locale.current.identifier.replacingOccurrences(of: "_", with: "-") }) {
+            return currentMatch
+        }
+
+        return supported.sorted(by: { $0.identifier < $1.identifier }).first ?? locale
     }
 }
 

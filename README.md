@@ -53,6 +53,9 @@ Use **Diagnostics → Export Debug Bundle** to save:
 - Cancels cleanly during transcribing.
 - Does not steal focus from current app.
 - Does not spam clipboard unexpectedly (when restore is enabled).
+- Speak a short sentence, stop talking, verify auto-stop within ~silenceTimeoutSeconds.
+- No speech: verify it auto-stops and errors “No speech detected” (or similar), returning to idle.
+- Manual stop still works.
 
 ## File Structure
 - `DictaApp.swift` — SwiftUI app entry.

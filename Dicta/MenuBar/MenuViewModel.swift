@@ -53,12 +53,43 @@ final class MenuViewModel: ObservableObject {
     }
 
     var toggleTitle: String {
+        let hotkeyLabel = settings.hotkey.displayString
+        let shortcut = hotkeyLabel.isEmpty ? "" : " (\(hotkeyLabel))"
         switch state {
-        case .idle, .armed: return "Start Dictation"
-        case .recording: return "Stop Dictation"
+        case .idle, .armed: return "Start Dictation\(shortcut)"
+        case .recording: return "Stop Dictation\(shortcut)"
         case .stopping, .transcribing, .inserting: return "Cancel Dictation"
         case .error: return "Reset Dictation"
         }
+    }
+
+    var statusLine: String {
+        state.displayName
+    }
+
+    func permissionStatus(for kind: PermissionKind) -> PermissionStatus {
+        switch kind {
+        case .microphone:
+            return permissions.microphoneStatus()
+        case .speech:
+            return permissions.speechStatus()
+        case .accessibility:
+            return permissions.accessibilityStatus()
+        }
+    }
+
+    func permissionStatusLabel(for kind: PermissionKind) -> String {
+        let status = permissionStatus(for: kind)
+        let statusText: String
+        switch status {
+        case .granted:
+            statusText = "Granted"
+        case .denied:
+            statusText = "Not granted"
+        case .notDetermined:
+            statusText = "Not requested"
+        }
+        return "\(kind.displayName): \(statusText)"
     }
 
     func toggleDictation() {
@@ -97,4 +128,8 @@ final class MenuViewModel: ObservableObject {
     func showDiagnostics() { showDiagnosticsAction() }
     func showPermissions() { showPermissionsAction() }
     func quit() { quitAction() }
+
+    func openSystemSettings(for kind: PermissionKind) {
+        permissions.openSystemSettings(for: kind)
+    }
 }
