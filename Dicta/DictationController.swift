@@ -17,7 +17,6 @@ final class DictationController: ObservableObject {
     private let transcriptionEngine: TranscriptionEngine
     private let insertionManager: InsertionManager
     private let hudController = HUDController()
-    private let postProcessor = PostProcessor()
     private var currentRecordingURL: URL?
     private var lastRecordingInfo: RecordingInfo?
     private var lastTranscriptionDuration: TimeInterval?
@@ -42,7 +41,7 @@ final class DictationController: ObservableObject {
         self.permissions = permissions
         self.logger = logger
         self.audioRecorder = AudioRecorder(logger: logger)
-        self.transcriptionEngine = AppleSpeechTranscriptionEngine(logger: logger)
+        self.transcriptionEngine = AppleSpeechTranscriptionEngine(settings: settings, logger: logger)
         self.insertionManager = InsertionManager(
             pasteboardInserter: PasteboardInserter(logger: logger),
             accessibilityInserter: AccessibilityTyperInserter(logger: logger),
@@ -265,17 +264,16 @@ final class DictationController: ObservableObject {
     private func handleTranscriptionSuccess(_ result: TranscriptionResult) {
         let rawText = result.text
         logger.log(.transcription, "Transcript (raw): \(rawText)", verbose: true)
-        let processedText = postProcessor.process(rawText, logger: logger)
-        let finalText = normalize(text: processedText)
-        logger.log(.transcription, "Transcript (post): \(finalText)", verbose: true)
-        guard !finalText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty else {
+        let processedText = TextPostProcessor.process(rawText, settings: settings)
+        logger.log(.transcription, "Transcript (post): \(processedText)", verbose: true)
+        guard !processedText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty else {
             lastTranscriptionErrorDetails = "No speech detected"
             lastInsertionMode = settings.insertionMode.rawValue
             lastInsertionResult = "skipped: no speech detected"
             fail("No speech detected")
             return
         }
-        lastTranscript = finalText
+        lastTranscript = processedText
         transition(to: .inserting, reason: "Transcription complete")
         updateHUD(for: .inserting)
 
@@ -289,9 +287,9 @@ final class DictationController: ObservableObject {
         insertionTask = Task.detached { [weak self] in
             guard let self else { return }
             do {
-                self.logger.log(.insertion, "Insertion started (mode: \(insertionMode.rawValue), chars: \(finalText.count))")
+                self.logger.log(.insertion, "Insertion started (mode: \(insertionMode.rawValue), chars: \(processedText.count))")
                 try await self.withTimeout(seconds: insertionTimeout, timeoutError: InsertionError.timeout) {
-                    try await self.insertionManager.insert(text: finalText,
+                    try await self.insertionManager.insert(text: processedText,
                                                           mode: insertionMode,
                                                           restoreClipboard: restoreClipboard)
                 }
@@ -450,15 +448,6 @@ final class DictationController: ObservableObject {
         return Date().timeIntervalSince(stateEnteredAt)
     }
 
-    private func normalize(text: String) -> String {
-        var cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let first = cleaned.first {
-            cleaned.replaceSubrange(cleaned.startIndex...cleaned.startIndex, with: String(first).uppercased())
-        }
-        cleaned = cleaned.replacingOccurrences(of: "  ", with: " ")
-        return cleaned
-    }
-
     private func updateHUD(for state: DictationState) {
         guard settings.showHUD else {
             hudController.hide()
@@ -492,6 +481,7 @@ final class DictationController: ObservableObject {
         let duration = lastRecordingInfo?.duration ?? 0
         let transcriptionDuration = lastTranscriptionDuration ?? 0
         let lastNonSilentAge = stats.lastNonSilentAt.map { Date().timeIntervalSince($0) }
+        let phraseMapCount = PhraseMapStore.mergedMap(settings: settings).count
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
 
@@ -500,6 +490,9 @@ final class DictationController: ObservableObject {
         State: \(stateSummary)
         Hotkey: \(hotkeySummary)
         Language Identifier: \(settings.languageIdentifier)
+        Smart Punctuation: \(settings.smartPunctuationEnabled)
+        Phrase Map Enabled: \(settings.phraseMapEnabled)
+        Phrase Map Entries: \(phraseMapCount)
         Insertion Mode: \(settings.insertionMode.rawValue)
         Permissions: \(permissionsSummary)
         Audio Device: \(deviceName)

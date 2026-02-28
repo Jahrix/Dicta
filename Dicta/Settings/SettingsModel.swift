@@ -9,6 +9,11 @@ final class SettingsModel: ObservableObject {
     @Published var languageIdentifier: String { didSet { defaults.set(languageIdentifier, forKey: Keys.languageIdentifier) } }
     @Published var postProcessorReplacements: [String: String] { didSet { savePostProcessorReplacements() } }
     @Published var postProcessorJSONPath: String { didSet { defaults.set(postProcessorJSONPath, forKey: Keys.postProcessorJSONPath) } }
+    @Published var smartPunctuationEnabled: Bool { didSet { defaults.set(smartPunctuationEnabled, forKey: Keys.smartPunctuationEnabled) } }
+    @Published var minWordsForAutoPeriod: Int { didSet { defaults.set(minWordsForAutoPeriod, forKey: Keys.minWordsForAutoPeriod) } }
+    @Published var phraseMapEnabled: Bool { didSet { defaults.set(phraseMapEnabled, forKey: Keys.phraseMapEnabled) } }
+    @Published var phraseMap: [String: String] { didSet { savePhraseMap() } }
+    @Published var spokenPunctuationEnabled: Bool { didSet { defaults.set(spokenPunctuationEnabled, forKey: Keys.spokenPunctuationEnabled) } }
     @Published var maxRecordingSeconds: Double { didSet { defaults.set(maxRecordingSeconds, forKey: Keys.maxRecordingSeconds) } }
     @Published var transcriptionTimeoutSeconds: Double { didSet { defaults.set(transcriptionTimeoutSeconds, forKey: Keys.transcriptionTimeoutSeconds) } }
     @Published var insertionTimeoutSeconds: Double { didSet { defaults.set(insertionTimeoutSeconds, forKey: Keys.insertionTimeoutSeconds) } }
@@ -32,6 +37,11 @@ final class SettingsModel: ObservableObject {
             Keys.languageIdentifier: Self.defaultLanguageIdentifier(),
             Keys.postProcessorReplacements: Data(),
             Keys.postProcessorJSONPath: "",
+            Keys.smartPunctuationEnabled: true,
+            Keys.minWordsForAutoPeriod: 8,
+            Keys.phraseMapEnabled: true,
+            Keys.phraseMapData: Self.encodePhraseMap(PhraseMapStore.builtInMap),
+            Keys.spokenPunctuationEnabled: true,
             Keys.maxRecordingSeconds: 60.0,
             Keys.transcriptionTimeoutSeconds: 20.0,
             Keys.insertionTimeoutSeconds: 2.0,
@@ -48,12 +58,38 @@ final class SettingsModel: ObservableObject {
 
         let keyCode = defaults.integer(forKey: Keys.hotkeyKeyCode)
         let modifiers = defaults.integer(forKey: Keys.hotkeyModifiers)
+        let storedLanguage = defaults.string(forKey: Keys.languageIdentifier)
+        let languageIdentifierValue = (storedLanguage?.isEmpty == false) ? storedLanguage! : Self.defaultLanguageIdentifier()
+        let postProcessorReplacementsValue = Self.decodePostProcessorReplacements(from: defaults.data(forKey: Keys.postProcessorReplacements))
+        let postProcessorJSONPathValue = defaults.string(forKey: Keys.postProcessorJSONPath) ?? ""
+        let smartPunctuationEnabledValue = defaults.bool(forKey: Keys.smartPunctuationEnabled)
+        let minWordsForAutoPeriodValue = max(1, defaults.integer(forKey: Keys.minWordsForAutoPeriod))
+        let phraseMapEnabledValue = defaults.bool(forKey: Keys.phraseMapEnabled)
+        let spokenPunctuationEnabledValue = defaults.bool(forKey: Keys.spokenPunctuationEnabled)
+        var phraseMapValue = Self.decodePhraseMap(from: defaults.data(forKey: Keys.phraseMapData))
+        var shouldSavePhraseMap = false
+        if phraseMapValue.isEmpty {
+            var merged = PhraseMapStore.builtInMap
+            let legacy = Self.loadLegacyPhraseMap(from: defaults,
+                                                  postProcessorReplacements: postProcessorReplacementsValue,
+                                                  postProcessorJSONPath: postProcessorJSONPathValue)
+            for (key, value) in legacy {
+                merged[key] = value
+            }
+            phraseMapValue = merged
+            shouldSavePhraseMap = true
+        }
+
         hotkey = Hotkey(keyCode: UInt32(keyCode), modifiers: UInt32(modifiers))
         insertionMode = InsertionMode(rawValue: defaults.string(forKey: Keys.insertionMode) ?? InsertionMode.pasteboard.rawValue) ?? .pasteboard
-        let storedLanguage = defaults.string(forKey: Keys.languageIdentifier)
-        languageIdentifier = (storedLanguage?.isEmpty == false) ? storedLanguage! : Self.defaultLanguageIdentifier()
-        postProcessorReplacements = Self.decodePostProcessorReplacements(from: defaults.data(forKey: Keys.postProcessorReplacements))
-        postProcessorJSONPath = defaults.string(forKey: Keys.postProcessorJSONPath) ?? ""
+        languageIdentifier = languageIdentifierValue
+        postProcessorReplacements = postProcessorReplacementsValue
+        postProcessorJSONPath = postProcessorJSONPathValue
+        smartPunctuationEnabled = smartPunctuationEnabledValue
+        minWordsForAutoPeriod = minWordsForAutoPeriodValue
+        phraseMapEnabled = phraseMapEnabledValue
+        phraseMap = phraseMapValue
+        spokenPunctuationEnabled = spokenPunctuationEnabledValue
         maxRecordingSeconds = defaults.double(forKey: Keys.maxRecordingSeconds)
         transcriptionTimeoutSeconds = defaults.double(forKey: Keys.transcriptionTimeoutSeconds)
         insertionTimeoutSeconds = defaults.double(forKey: Keys.insertionTimeoutSeconds)
@@ -66,6 +102,10 @@ final class SettingsModel: ObservableObject {
         showHUD = defaults.bool(forKey: Keys.showHUD)
         verboseLogging = defaults.bool(forKey: Keys.verboseLogging)
         hasCompletedOnboarding = defaults.bool(forKey: Keys.hasCompletedOnboarding)
+
+        if shouldSavePhraseMap {
+            savePhraseMap()
+        }
     }
 
     private func saveHotkey() {
@@ -78,6 +118,14 @@ final class SettingsModel: ObservableObject {
         defaults.set(data, forKey: Keys.postProcessorReplacements)
     }
 
+    private func savePhraseMap() {
+        defaults.set(Self.encodePhraseMap(phraseMap), forKey: Keys.phraseMapData)
+    }
+
+    var selectedLocaleIdentifier: String {
+        languageIdentifier
+    }
+
     enum Keys {
         static let hotkeyKeyCode = "dicta.hotkey.keyCode"
         static let hotkeyModifiers = "dicta.hotkey.modifiers"
@@ -85,6 +133,11 @@ final class SettingsModel: ObservableObject {
         static let languageIdentifier = "dicta.language.identifier"
         static let postProcessorReplacements = "dicta.postProcessor.replacements"
         static let postProcessorJSONPath = "dicta.postProcessor.jsonPath"
+        static let smartPunctuationEnabled = "dicta.smartPunctuation.enabled"
+        static let minWordsForAutoPeriod = "dicta.smartPunctuation.minWords"
+        static let phraseMapEnabled = "dicta.phraseMap.enabled"
+        static let phraseMapData = "dicta.phraseMap.data"
+        static let spokenPunctuationEnabled = "dicta.spokenPunctuation.enabled"
         static let maxRecordingSeconds = "dicta.maxRecordingSeconds"
         static let transcriptionTimeoutSeconds = "dicta.transcriptionTimeoutSeconds"
         static let insertionTimeoutSeconds = "dicta.insertionTimeoutSeconds"
@@ -120,6 +173,32 @@ final class SettingsModel: ObservableObject {
     private static func decodePostProcessorReplacements(from data: Data?) -> [String: String] {
         guard let data, !data.isEmpty else { return [:] }
         return (try? JSONDecoder().decode([String: String].self, from: data)) ?? [:]
+    }
+
+    private static func decodePhraseMap(from data: Data?) -> [String: String] {
+        guard let data, !data.isEmpty else { return [:] }
+        return (try? JSONDecoder().decode([String: String].self, from: data)) ?? [:]
+    }
+
+    private static func encodePhraseMap(_ map: [String: String]) -> Data {
+        (try? JSONEncoder().encode(map)) ?? Data()
+    }
+
+    private static func loadLegacyPhraseMap(from defaults: UserDefaults,
+                                            postProcessorReplacements: [String: String],
+                                            postProcessorJSONPath: String) -> [String: String] {
+        var merged = postProcessorReplacements
+        let trimmedPath = postProcessorJSONPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedPath.isEmpty {
+            let url = URL(fileURLWithPath: trimmedPath)
+            if let data = try? Data(contentsOf: url),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: String] {
+                for (key, value) in json {
+                    merged[key] = value
+                }
+            }
+        }
+        return merged
     }
 }
 

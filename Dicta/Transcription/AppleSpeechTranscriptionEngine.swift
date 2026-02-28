@@ -3,10 +3,11 @@ import Speech
 
 final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
     private let logger: DiagnosticsLogger
-    private let postProcessor = PostProcessor()
+    private let settings: SettingsModel
     private let timeoutSeconds: Double = 20.0
 
-    init(logger: DiagnosticsLogger) {
+    init(settings: SettingsModel, logger: DiagnosticsLogger) {
+        self.settings = settings
         self.logger = logger
     }
 
@@ -32,7 +33,9 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
         let request = SFSpeechURLRecognitionRequest(url: url)
         request.taskHint = .dictation
         request.shouldReportPartialResults = false
-        let contextualStrings = postProcessor.contextualStrings
+        let contextualStrings = await MainActor.run {
+            PhraseMapStore.contextualStrings(settings: settings)
+        }
         if !contextualStrings.isEmpty {
             request.contextualStrings = contextualStrings
             logger.log(.transcription, "Contextual strings loaded (\(contextualStrings.count))", verbose: true)
@@ -51,13 +54,12 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
                         if let result, result.isFinal {
                             let rawText = result.bestTranscription.formattedString
                             self.logger.log(.transcription, "AppleSpeech final result (length: \(rawText.count))")
-                            let processedText = self.postProcessor.process(rawText, logger: self.logger)
-                            if processedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            if rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                                 resumeBox.resume(throwing: TranscriptionError.noSpeechDetected)
                             } else {
                                 let confidence = result.bestTranscription.segments.map { Double($0.confidence) }.reduce(0.0, +) / Double(max(result.bestTranscription.segments.count, 1))
                                 let durations = result.bestTranscription.segments.map { $0.duration }
-                                resumeBox.resume(returning: TranscriptionResult(text: processedText, confidence: confidence, segmentDurations: durations))
+                                resumeBox.resume(returning: TranscriptionResult(text: rawText, confidence: confidence, segmentDurations: durations))
                             }
                             if let error {
                                 self.logger.log(.transcription, "Recognition finished with error: \(error.localizedDescription)")
