@@ -30,6 +30,7 @@ final class DictationController: ObservableObject {
     private var watchdogTask: Task<Void, Never>?
     private var noFramesTask: Task<Void, Never>?
     private var stateEnteredAt = Date()
+    private var isStopping = false
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -151,6 +152,15 @@ final class DictationController: ObservableObject {
     }
 
     private func stopRecordingFlow(reason: String) {
+        guard case .recording = state else {
+            logger.log(.state, "Stop recording ignored (state: \(state.displayName))")
+            return
+        }
+        guard !isStopping else {
+            logger.log(.state, "Stop recording ignored (already stopping)")
+            return
+        }
+        isStopping = true
         maxRecordingTask?.cancel()
         noFramesTask?.cancel()
         logger.log(.audio, "Stop recording requested: \(reason)")
@@ -165,6 +175,11 @@ final class DictationController: ObservableObject {
         transcriptionTask?.cancel()
         transcriptionTask = Task.detached { [weak self] in
             guard let self else { return }
+            defer {
+                Task { @MainActor in
+                    self.isStopping = false
+                }
+            }
             do {
                 let recordingInfo = try await self.audioRecorder.stopRecording()
                 DiagnosticsManager.shared.addRecentAudio(recordingInfo.url)
@@ -349,6 +364,7 @@ final class DictationController: ObservableObject {
 
     private func runWatchdogTick() {
         if case .recording(let startedAt) = state {
+            if isStopping { return }
             let maxAllowed = settings.maxRecordingSeconds + 5
             if stateDuration() > maxAllowed {
                 fail("Watchdog: recording timeout")
@@ -360,7 +376,15 @@ final class DictationController: ObservableObject {
             let lastNonSilentAt = stats.lastNonSilentAt ?? startedAt
             let silenceThreshold = settings.silenceTimeoutSeconds
             if Date().timeIntervalSince(lastNonSilentAt) > silenceThreshold {
-                stopRecordingFlow(reason: "VAD silence timeout (\(Int(silenceThreshold))s)")
+                let rmsText = String(format: "%.4f", stats.currentRMS)
+                let peakText = String(format: "%.4f", stats.peakRMS)
+                let silenceText = String(format: "%.2f", silenceThreshold)
+                let thresholdText = String(format: "%.4f", settings.vadThresholdRMS)
+                let lastNonSilentText = stats.lastNonSilentAt?.description ?? "n/a"
+                logger.log(.audio, "VAD silence timeout (rms=\(rmsText), peak=\(peakText), lastNonSilentAt=\(lastNonSilentText), silence=\(silenceText)s, threshold=\(thresholdText))")
+                if case .recording = state, !isStopping {
+                    stopRecordingFlow(reason: "VAD silence timeout (\(Int(silenceThreshold))s)")
+                }
                 return
             }
         }

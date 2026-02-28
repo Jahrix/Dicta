@@ -32,7 +32,7 @@ final class AudioRecorder {
     var onConfigurationChange: (() -> Void)?
     var vadThresholdRMS: Double = 0.015
 
-    private let targetFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16_000, channels: 1, interleaved: true)!
+    private let targetFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16_000, channels: 1, interleaved: false)!
     private let statsLock = NSLock()
     private var stats = AudioRecorderStats(framesReceived: 0,
                                           bytesWritten: 0,
@@ -45,6 +45,8 @@ final class AudioRecorder {
                                           channels: 1)
     private var lastTapLogAt: Date?
     private var lastNonSilentLogAt: Date?
+    private var didLogMissingInt16 = false
+    private var didLogMissingFloat = false
 
     init(logger: DiagnosticsLogger) {
         self.logger = logger
@@ -231,16 +233,7 @@ final class AudioRecorder {
         let frameLength = Int(buffer.frameLength)
         guard frameLength > 0 else { return }
         let bytesPerFrame = Int64(buffer.format.streamDescription.pointee.mBytesPerFrame)
-        var rms: Double = 0
-        if let data = buffer.int16ChannelData {
-            var sum: Double = 0
-            let samples = data[0]
-            for i in 0..<frameLength {
-                let sample = Double(samples[i])
-                sum += sample * sample
-            }
-            rms = sqrt(sum / Double(frameLength)) / 32768.0
-        }
+        let rms = computeRMS(buffer: buffer, frameLength: frameLength)
 
         let now = Date()
         statsLock.lock()
@@ -271,6 +264,75 @@ final class AudioRecorder {
             }
         }
         statsLock.unlock()
+    }
+
+    private func computeRMS(buffer: AVAudioPCMBuffer, frameLength: Int) -> Double {
+        if let data = buffer.int16ChannelData {
+            var sum: Double = 0
+            let samples = data[0]
+            for i in 0..<frameLength {
+                let sample = Double(samples[i])
+                sum += sample * sample
+            }
+            return sqrt(sum / Double(frameLength)) / 32768.0
+        }
+
+        if !didLogMissingInt16 {
+            didLogMissingInt16 = true
+            logger.log(.audio, "int16ChannelData unavailable; falling back to float/audioBufferList RMS", verbose: true)
+        }
+
+        if let floatData = buffer.floatChannelData {
+            var sum: Double = 0
+            let samples = floatData[0]
+            for i in 0..<frameLength {
+                let sample = Double(samples[i])
+                sum += sample * sample
+            }
+            return sqrt(sum / Double(frameLength))
+        }
+
+        if !didLogMissingFloat {
+            didLogMissingFloat = true
+            logger.log(.audio, "floatChannelData unavailable; falling back to audioBufferList RMS", verbose: true)
+        }
+
+        let bufferList = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: buffer.audioBufferList))
+        var sum: Double = 0
+        var totalSamples = 0
+
+        for audioBuffer in bufferList {
+            guard let mData = audioBuffer.mData else { continue }
+            let byteCount = Int(audioBuffer.mDataByteSize)
+            if byteCount == 0 { continue }
+
+            switch buffer.format.commonFormat {
+            case .pcmFormatFloat32:
+                let sampleCount = byteCount / MemoryLayout<Float>.size
+                let samples = mData.assumingMemoryBound(to: Float.self)
+                for i in 0..<sampleCount {
+                    let sample: Double = Double(samples[i])
+                    sum += sample * sample
+                }
+                totalSamples += sampleCount
+            default:
+                let sampleCount = byteCount / MemoryLayout<Int16>.size
+                let samples = mData.assumingMemoryBound(to: Int16.self)
+                for i in 0..<sampleCount {
+                    let sample: Double = Double(samples[i])
+                    sum += sample * sample
+                }
+                totalSamples += sampleCount
+            }
+        }
+
+        guard totalSamples > 0 else { return 0 }
+
+        let rms = sqrt(sum / Double(totalSamples))
+        if buffer.format.commonFormat == .pcmFormatFloat32 {
+            return rms
+        }
+        return rms / 32768.0
     }
 }
 
