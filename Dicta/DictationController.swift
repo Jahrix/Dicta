@@ -27,6 +27,8 @@ final class DictationController: ObservableObject {
     private var transcriptionTask: Task<Void, Never>?
     private var insertionTask: Task<Void, Never>?
     private var maxRecordingTask: Task<Void, Never>?
+    private var startRecordingTask: Task<Void, Never>?
+    private var startRequestID: UUID?
     private let watchdogQueue = DispatchQueue(label: "com.dicta.watchdog", qos: .utility)
     private var watchdogTimer: DispatchSourceTimer?
     private var noFramesTask: Task<Void, Never>?
@@ -49,7 +51,7 @@ final class DictationController: ObservableObject {
 
         audioRecorder.onConfigurationChange = { [weak self] in
             Task { @MainActor in
-                self?.fail("Audio device changed or interrupted")
+                self?.handleAudioConfigurationChange()
             }
         }
 
@@ -102,17 +104,20 @@ final class DictationController: ObservableObject {
         lastTranscriptionErrorDetails = "none"
         lastInsertionMode = "none"
         lastInsertionResult = "none"
+        startRecordingTask?.cancel()
+        let requestID = UUID()
+        startRequestID = requestID
         transition(to: .armed, reason: "Starting dictation")
         updateHUD(for: .armed)
         NSSound.beep()
 
-        Task.detached { [weak self] in
+        startRecordingTask = Task.detached { [weak self] in
             guard let self else { return }
-            await self.ensurePermissionsAndStartRecording()
+            await self.ensurePermissionsAndStartRecording(requestID: requestID)
         }
     }
 
-    private func ensurePermissionsAndStartRecording() async {
+    private func ensurePermissionsAndStartRecording(requestID: UUID) async {
         var micStatus = permissions.microphoneStatus()
         if micStatus == .notDetermined {
             micStatus = await permissions.requestMicrophone()
@@ -135,6 +140,12 @@ final class DictationController: ObservableObject {
             return
         }
 
+        let shouldProceed = await MainActor.run { [weak self] in
+            guard let self else { return false }
+            return self.startRequestID == requestID && (self.state == .armed || self.state == .idle)
+        }
+        guard shouldProceed else { return }
+
         do {
             let url = try audioRecorder.startRecording()
             await MainActor.run {
@@ -149,6 +160,15 @@ final class DictationController: ObservableObject {
             await MainActor.run {
                 self.fail("Failed to start recording: \(error.localizedDescription)")
             }
+        }
+    }
+
+    private func handleAudioConfigurationChange() {
+        switch state {
+        case .recording, .armed, .stopping:
+            cancelAndReset(reason: "Audio device changed or interrupted")
+        default:
+            fail("Audio device changed or interrupted")
         }
     }
 
@@ -293,6 +313,8 @@ final class DictationController: ObservableObject {
     private func cancelAndReset(reason: String) {
         logger.log(.state, "Cancel: \(reason)")
         isStopping = false
+        startRecordingTask?.cancel()
+        startRequestID = nil
         transcriptionTask?.cancel()
         insertionTask?.cancel()
         maxRecordingTask?.cancel()
