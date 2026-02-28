@@ -27,7 +27,8 @@ final class DictationController: ObservableObject {
     private var transcriptionTask: Task<Void, Never>?
     private var insertionTask: Task<Void, Never>?
     private var maxRecordingTask: Task<Void, Never>?
-    private var watchdogTask: Task<Void, Never>?
+    private let watchdogQueue = DispatchQueue(label: "com.dicta.watchdog", qos: .utility)
+    private var watchdogTimer: DispatchSourceTimer?
     private var noFramesTask: Task<Void, Never>?
     private var stateEnteredAt = Date()
     private var isStopping = false
@@ -291,6 +292,7 @@ final class DictationController: ObservableObject {
 
     private func cancelAndReset(reason: String) {
         logger.log(.state, "Cancel: \(reason)")
+        isStopping = false
         transcriptionTask?.cancel()
         insertionTask?.cancel()
         maxRecordingTask?.cancel()
@@ -339,13 +341,17 @@ final class DictationController: ObservableObject {
     }
 
     private func startWatchdog() {
-        watchdogTask?.cancel()
-        watchdogTask = Task.detached { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                await self?.runWatchdogTick()
+        watchdogTimer?.cancel()
+        let timer = DispatchSource.makeTimerSource(queue: watchdogQueue)
+        timer.schedule(deadline: .now() + 0.2, repeating: 0.1, leeway: .milliseconds(50))
+        timer.setEventHandler { [weak self] in
+            guard let self else { return }
+            Task { @MainActor in
+                self.runWatchdogTick()
             }
         }
+        watchdogTimer = timer
+        timer.resume()
     }
 
     private func handleMaxRecordingTimeout() {
@@ -455,6 +461,7 @@ final class DictationController: ObservableObject {
         let fileSize = lastRecordingInfo?.fileSizeBytes ?? 0
         let duration = lastRecordingInfo?.duration ?? 0
         let transcriptionDuration = lastTranscriptionDuration ?? 0
+        let lastNonSilentAge = stats.lastNonSilentAt.map { Date().timeIntervalSince($0) }
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
 
@@ -471,7 +478,10 @@ final class DictationController: ObservableObject {
         Bytes Written: \(stats.bytesWritten)
         Peak RMS: \(String(format: "%.4f", stats.peakRMS))
         Current RMS: \(String(format: "%.4f", stats.currentRMS))
+        VAD Threshold RMS: \(String(format: "%.4f", settings.vadThresholdRMS))
+        Silence Timeout: \(String(format: "%.2f", settings.silenceTimeoutSeconds))s
         Last Non-Silent At: \(stats.lastNonSilentAt?.description ?? "n/a")
+        Last Non-Silent Age: \(lastNonSilentAge.map { String(format: "%.2f", $0) } ?? "n/a")s
         Last Frame At: \(stats.lastFrameAt?.description ?? "n/a")
         Recording Duration: \(String(format: "%.2f", duration))s
         Audio File Size: \(fileSize) bytes
