@@ -1,0 +1,27 @@
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata/
+*.xccheckout
+*.xcscmblueprint
+*.xcuserstate
+*.moved-aside
+*.swp
+*.lock
+*.tmp
+
+# SwiftPM
+.build/
+
+# App bundles
+*.app
+
+# Logs
+*.log
+

@@ -1,0 +1,420 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		E10101010101010101010101 /* DictaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10101010101010101010101 /* DictaApp.swift */; };
+		E10202020202020202020202 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10202020202020202020202 /* AppDelegate.swift */; };
+		E10303030303030303030303 /* DictationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10303030303030303030303 /* DictationController.swift */; };
+		E10404040404040404040404 /* MenuViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10404040404040404040404 /* MenuViewModel.swift */; };
+		E10505050505050505050505 /* StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10505050505050505050505 /* StatusItemController.swift */; };
+		E10606060606060606060606 /* Hotkey.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10606060606060606060606 /* Hotkey.swift */; };
+		E10707070707070707070707 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10707070707070707070707 /* HotkeyManager.swift */; };
+		E10808080808080808080808 /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10808080808080808080808 /* AudioRecorder.swift */; };
+		E10909090909090909090909 /* AudioSessionGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10909090909090909090909 /* AudioSessionGuard.swift */; };
+		E10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift */; };
+		E10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift */; };
+		E10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */; };
+		E10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift */; };
+		E10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift */; };
+		E10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift */; };
+		E11010101010101010101010 /* SettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11010101010101010101010 /* SettingsModel.swift */; };
+		E11111111111111111111111 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11111111111111111111111 /* SettingsView.swift */; };
+		E11212121212121212121212 /* HotkeyRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11212121212121212121212 /* HotkeyRecorderView.swift */; };
+		E11313131313131313131313 /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11313131313131313131313 /* Logger.swift */; };
+		E11414141414141414141414 /* DiagnosticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11414141414141414141414 /* DiagnosticsManager.swift */; };
+		E11515151515151515151515 /* DiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11515151515151515151515 /* DiagnosticsView.swift */; };
+		E11616161616161616161616 /* PermissionsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11616161616161616161616 /* PermissionsManager.swift */; };
+		E11717171717171717171717 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11717171717171717171717 /* OnboardingView.swift */; };
+		E11818181818181818181818 /* DictationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11818181818181818181818 /* DictationState.swift */; };
+		E11919191919191919191919 /* HUDController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11919191919191919191919 /* HUDController.swift */; };
+		E13030303030303030303030 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D13030303030303030303030 /* NotificationPresenter.swift */; };
+		E12020202020202020202020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D12020202020202020202020 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		D10101010101010101010101 /* DictaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictaApp.swift; sourceTree = "<group>"; };
+		D10202020202020202020202 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		D10303030303030303030303 /* DictationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationController.swift; sourceTree = "<group>"; };
+		D10404040404040404040404 /* MenuViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuViewModel.swift; sourceTree = "<group>"; };
+		D10505050505050505050505 /* StatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemController.swift; sourceTree = "<group>"; };
+		D10606060606060606060606 /* Hotkey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hotkey.swift; sourceTree = "<group>"; };
+		D10707070707070707070707 /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
+		D10808080808080808080808 /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
+		D10909090909090909090909 /* AudioSessionGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionGuard.swift; sourceTree = "<group>"; };
+		D10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionEngine.swift; sourceTree = "<group>"; };
+		D10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechTranscriptionEngine.swift; sourceTree = "<group>"; };
+		D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionResult.swift; sourceTree = "<group>"; };
+		D10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsertionManager.swift; sourceTree = "<group>"; };
+		D10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteboardInserter.swift; sourceTree = "<group>"; };
+		D10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityTyperInserter.swift; sourceTree = "<group>"; };
+		D11010101010101010101010 /* SettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModel.swift; sourceTree = "<group>"; };
+		D11111111111111111111111 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		D11212121212121212121212 /* HotkeyRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorderView.swift; sourceTree = "<group>"; };
+		D11313131313131313131313 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
+		D11414141414141414141414 /* DiagnosticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsManager.swift; sourceTree = "<group>"; };
+		D11515151515151515151515 /* DiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsView.swift; sourceTree = "<group>"; };
+		D11616161616161616161616 /* PermissionsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsManager.swift; sourceTree = "<group>"; };
+		D11717171717171717171717 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		D11818181818181818181818 /* DictationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationState.swift; sourceTree = "<group>"; };
+		D11919191919191919191919 /* HUDController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDController.swift; sourceTree = "<group>"; };
+		D13030303030303030303030 /* NotificationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPresenter.swift; sourceTree = "<group>"; };
+		D12020202020202020202020 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D12121212121212121212121 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D12222222222222222222222 /* Dicta.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = Dicta.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A7A7A7A7A7A7A7A7A7A7A7A7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A4A4A4A4A4A4A4A4A4A4A4A4 = {
+			isa = PBXGroup;
+			children = (
+				B1B1B1B1B1B1B1B1B1B1B1B1 /* Dicta */,
+				C2C2C2C2C2C2C2C2C2C2C2C2 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+
+		B1B1B1B1B1B1B1B1B1B1B1B1 /* Dicta */ = {
+			isa = PBXGroup;
+			children = (
+				D10101010101010101010101 /* DictaApp.swift */,
+				D10202020202020202020202 /* AppDelegate.swift */,
+				D10303030303030303030303 /* DictationController.swift */,
+				B2B2B2B2B2B2B2B2B2B2B2B2 /* MenuBar */,
+				B3B3B3B3B3B3B3B3B3B3B3B3 /* Hotkey */,
+				B4B4B4B4B4B4B4B4B4B4B4B4 /* Audio */,
+				B5B5B5B5B5B5B5B5B5B5B5B5 /* Transcription */,
+				B6B6B6B6B6B6B6B6B6B6B6B6 /* Insertion */,
+				B7B7B7B7B7B7B7B7B7B7B7B7 /* Settings */,
+				B8B8B8B8B8B8B8B8B8B8B8B8 /* Diagnostics */,
+				B9B9B9B9B9B9B9B9B9B9B9B9 /* Permissions */,
+				C0C0C0C0C0C0C0C0C0C0C0C0 /* Utilities */,
+				C1C1C1C1C1C1C1C1C1C1C1C1 /* Resources */,
+			);
+			path = Dicta;
+			sourceTree = "<group>";
+		};
+
+		B2B2B2B2B2B2B2B2B2B2B2B2 /* MenuBar */ = {
+			isa = PBXGroup;
+			children = (
+				D10404040404040404040404 /* MenuViewModel.swift */,
+				D10505050505050505050505 /* StatusItemController.swift */,
+			);
+			path = MenuBar;
+			sourceTree = "<group>";
+		};
+
+		B3B3B3B3B3B3B3B3B3B3B3B3 /* Hotkey */ = {
+			isa = PBXGroup;
+			children = (
+				D10606060606060606060606 /* Hotkey.swift */,
+				D10707070707070707070707 /* HotkeyManager.swift */,
+			);
+			path = Hotkey;
+			sourceTree = "<group>";
+		};
+
+		B4B4B4B4B4B4B4B4B4B4B4B4 /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				D10808080808080808080808 /* AudioRecorder.swift */,
+				D10909090909090909090909 /* AudioSessionGuard.swift */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+
+		B5B5B5B5B5B5B5B5B5B5B5B5 /* Transcription */ = {
+			isa = PBXGroup;
+			children = (
+				D10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift */,
+				D10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift */,
+				D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */,
+			);
+			path = Transcription;
+			sourceTree = "<group>";
+		};
+
+		B6B6B6B6B6B6B6B6B6B6B6B6 /* Insertion */ = {
+			isa = PBXGroup;
+			children = (
+				D10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift */,
+				D10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift */,
+				D10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift */,
+			);
+			path = Insertion;
+			sourceTree = "<group>";
+		};
+
+		B7B7B7B7B7B7B7B7B7B7B7B7 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				D11010101010101010101010 /* SettingsModel.swift */,
+				D11111111111111111111111 /* SettingsView.swift */,
+				D11212121212121212121212 /* HotkeyRecorderView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+
+		B8B8B8B8B8B8B8B8B8B8B8B8 /* Diagnostics */ = {
+			isa = PBXGroup;
+			children = (
+				D11313131313131313131313 /* Logger.swift */,
+				D11414141414141414141414 /* DiagnosticsManager.swift */,
+				D11515151515151515151515 /* DiagnosticsView.swift */,
+			);
+			path = Diagnostics;
+			sourceTree = "<group>";
+		};
+
+		B9B9B9B9B9B9B9B9B9B9B9B9 /* Permissions */ = {
+			isa = PBXGroup;
+			children = (
+				D11616161616161616161616 /* PermissionsManager.swift */,
+				D11717171717171717171717 /* OnboardingView.swift */,
+			);
+			path = Permissions;
+			sourceTree = "<group>";
+		};
+
+		C0C0C0C0C0C0C0C0C0C0C0C0 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				D11818181818181818181818 /* DictationState.swift */,
+				D11919191919191919191919 /* HUDController.swift */,
+				D13030303030303030303030 /* NotificationPresenter.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+
+		C1C1C1C1C1C1C1C1C1C1C1C1 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				D12020202020202020202020 /* Assets.xcassets */,
+				D12121212121212121212121 /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+
+		C2C2C2C2C2C2C2C2C2C2C2C2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D12222222222222222222222 /* Dicta.app */,
+			);
+			path = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A2A2A2A2A2A2A2A2A2A2A2A2 /* Dicta */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A9A9A9A9A9A9A9A9A9A9A9A9 /* Build configuration list for PBXNativeTarget "Dicta" */;
+			buildPhases = (
+				A5A5A5A5A5A5A5A5A5A5A5A5 /* Sources */,
+				A6A6A6A6A6A6A6A6A6A6A6A6 /* Resources */,
+				A7A7A7A7A7A7A7A7A7A7A7A7 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Dicta;
+			productName = Dicta;
+			productReference = D12222222222222222222222 /* Dicta.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A1A1A1A1A1A1A1A1A1A1A1A1 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1520;
+				LastUpgradeCheck = 1520;
+				TargetAttributes = {
+					A2A2A2A2A2A2A2A2A2A2A2A2 = {
+						CreatedOnToolsVersion = 15.2;
+					};
+				};
+			};
+			buildConfigurationList = A8A8A8A8A8A8A8A8A8A8A8A8 /* Build configuration list for PBXProject "Dicta" */;
+			compatibilityVersion = "Xcode 15.0";
+			developmentRegion = en;
+			knownRegions = (
+				en,
+			);
+			mainGroup = A4A4A4A4A4A4A4A4A4A4A4A4;
+			productRefGroup = C2C2C2C2C2C2C2C2C2C2C2C2 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A2A2A2A2A2A2A2A2A2A2A2A2 /* Dicta */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A6A6A6A6A6A6A6A6A6A6A6A6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E12020202020202020202020 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A5A5A5A5A5A5A5A5A5A5A5A5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E10101010101010101010101 /* DictaApp.swift in Sources */,
+				E10202020202020202020202 /* AppDelegate.swift in Sources */,
+				E10303030303030303030303 /* DictationController.swift in Sources */,
+				E10404040404040404040404 /* MenuViewModel.swift in Sources */,
+				E10505050505050505050505 /* StatusItemController.swift in Sources */,
+				E10606060606060606060606 /* Hotkey.swift in Sources */,
+				E10707070707070707070707 /* HotkeyManager.swift in Sources */,
+				E10808080808080808080808 /* AudioRecorder.swift in Sources */,
+				E10909090909090909090909 /* AudioSessionGuard.swift in Sources */,
+				E10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift in Sources */,
+				E10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift in Sources */,
+				E10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift in Sources */,
+				E10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift in Sources */,
+				E10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift in Sources */,
+				E10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift in Sources */,
+				E11010101010101010101010 /* SettingsModel.swift in Sources */,
+				E11111111111111111111111 /* SettingsView.swift in Sources */,
+				E11212121212121212121212 /* HotkeyRecorderView.swift in Sources */,
+				E11313131313131313131313 /* Logger.swift in Sources */,
+				E11414141414141414141414 /* DiagnosticsManager.swift in Sources */,
+				E11515151515151515151515 /* DiagnosticsView.swift in Sources */,
+				E11616161616161616161616 /* PermissionsManager.swift in Sources */,
+				E11717171717171717171717 /* OnboardingView.swift in Sources */,
+				E11818181818181818181818 /* DictationState.swift in Sources */,
+				E11919191919191919191919 /* HUDController.swift in Sources */,
+				E13030303030303030303030 /* NotificationPresenter.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		ABABABABABABABABABABABAB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dicta.Dicta;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+
+		ACACACACACACACACACACACAC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dicta.Dicta;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+
+		ADADADADADADADADADADADAD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = Dicta/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dicta.Dicta;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+
+		AEAEAEAEAEAEAEAEAEAEAEAE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = Dicta/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dicta.Dicta;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A8A8A8A8A8A8A8A8A8A8A8A8 /* Build configuration list for PBXProject "Dicta" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ABABABABABABABABABABABAB /* Debug */,
+				ACACACACACACACACACACACAC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+
+		A9A9A9A9A9A9A9A9A9A9A9A9 /* Build configuration list for PBXNativeTarget "Dicta" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ADADADADADADADADADADADAD /* Debug */,
+				AEAEAEAEAEAEAEAEAEAEAEAE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A1A1A1A1A1A1A1A1A1A1A1A1 /* Project object */;
+}
