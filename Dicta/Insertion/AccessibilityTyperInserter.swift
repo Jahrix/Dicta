@@ -8,7 +8,7 @@ final class AccessibilityTyperInserter: TextInserter {
         self.logger = logger
     }
 
-    func insert(text: String, restoreClipboard: Bool, targetApp: FrontmostApp?) async throws {
+    func insert(text: String, restoreClipboard: Bool) async throws {
         guard AXIsProcessTrusted() else {
             throw InsertionError.accessibilityDenied
         }
