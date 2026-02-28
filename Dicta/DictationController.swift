@@ -215,7 +215,7 @@ final class DictationController: ObservableObject {
                 logger.log(.transcription, "Transcription cancelled")
                 return
             }
-            let details = detailedErrorDescription(error)
+            let details = Self.detailedErrorDescription(error)
             logger.log(.transcription, "Transcription failed: \(details)")
             await MainActor.run {
                 self.lastTranscriptionErrorDetails = details
@@ -262,7 +262,7 @@ final class DictationController: ObservableObject {
                     self.logger.log(.insertion, "Insertion cancelled")
                     return
                 }
-                let details = self.detailedErrorDescription(error)
+                let details = Self.detailedErrorDescription(error)
                 await MainActor.run {
                     let message = "Insertion failed: \(error.localizedDescription)"
                     self.lastInsertionResult = "failed: \(details)"
@@ -453,7 +453,7 @@ final class DictationController: ObservableObject {
         """
     }
 
-    private func detailedErrorDescription(_ error: Error) -> String {
+    private nonisolated static func detailedErrorDescription(_ error: Error) -> String {
         let nsError = error as NSError
         return "\(nsError.domain) (\(nsError.code)): \(nsError.localizedDescription)"
     }
