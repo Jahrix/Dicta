@@ -1,4 +1,5 @@
 .DS_Store
+AGENTS.md
 
 # Xcode
 build/
@@ -24,4 +25,3 @@ xcuserdata/
 
 # Logs
 *.log
-
