@@ -11,7 +11,7 @@ final class PasteboardInserter: TextInserter {
 
     func insert(text: String, restoreClipboard: Bool) async throws {
         let pasteboard = NSPasteboard.general
-        let previousItems = restoreClipboard ? pasteboard.pasteboardItems : nil
+        let previousItems = restoreClipboard ? snapshotPasteboardItems(from: pasteboard) : nil
 
         logger.log(.insertion, "Pasteboard insertion starting (chars: \(text.count), restoreClipboard: \(restoreClipboard))")
         do {
@@ -38,19 +38,13 @@ final class PasteboardInserter: TextInserter {
 
             if restoreClipboard {
                 try await Task.sleep(nanoseconds: 150_000_000)
-                pasteboard.clearContents()
-                if let previousItems {
-                    pasteboard.writeObjects(previousItems)
-                }
+                restorePasteboardItems(previousItems, to: pasteboard)
                 logger.log(.insertion, "Clipboard restored after pasteboard insertion")
             }
         } catch {
             if restoreClipboard {
                 try? await Task.sleep(nanoseconds: 50_000_000)
-                pasteboard.clearContents()
-                if let previousItems {
-                    pasteboard.writeObjects(previousItems)
-                }
+                restorePasteboardItems(previousItems, to: pasteboard)
                 logger.log(.insertion, "Clipboard restored after insertion failure")
             }
             throw error
@@ -70,5 +64,31 @@ final class PasteboardInserter: TextInserter {
         keyDown.post(tap: .cghidEventTap)
         keyUp.post(tap: .cghidEventTap)
         return true
+    }
+
+    private func snapshotPasteboardItems(from pasteboard: NSPasteboard) -> [[NSPasteboard.PasteboardType: Data]] {
+        guard let items = pasteboard.pasteboardItems else { return [] }
+        return items.map { item in
+            var snapshot: [NSPasteboard.PasteboardType: Data] = [:]
+            for type in item.types {
+                if let data = item.data(forType: type) {
+                    snapshot[type] = data
+                }
+            }
+            return snapshot
+        }
+    }
+
+    private func restorePasteboardItems(_ snapshots: [[NSPasteboard.PasteboardType: Data]]?, to pasteboard: NSPasteboard) {
+        pasteboard.clearContents()
+        guard let snapshots, !snapshots.isEmpty else { return }
+        let items: [NSPasteboardItem] = snapshots.map { snapshot in
+            let item = NSPasteboardItem()
+            for (type, data) in snapshot {
+                item.setData(data, forType: type)
+            }
+            return item
+        }
+        _ = pasteboard.writeObjects(items)
     }
 }
