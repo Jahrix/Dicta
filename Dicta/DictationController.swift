@@ -96,6 +96,10 @@ final class DictationController: ObservableObject {
     }
 
     private func startRecordingFlow() {
+        lastError = ""
+        lastTranscriptionErrorDetails = "none"
+        lastInsertionMode = "none"
+        lastInsertionResult = "none"
         transition(to: .armed, reason: "Starting dictation")
         updateHUD(for: .armed)
         NSSound.beep()
@@ -156,7 +160,7 @@ final class DictationController: ObservableObject {
 
         let languageIdentifier = settings.languageIdentifier
         let preferOnDevice = settings.preferOnDevice
-        let transcriptionTimeout = settings.transcriptionTimeoutSeconds
+        let transcriptionTimeout = settings.transcriptionTimeoutSeconds > 0 ? settings.transcriptionTimeoutSeconds : 20.0
 
         transcriptionTask?.cancel()
         transcriptionTask = Task.detached { [weak self] in
@@ -207,6 +211,10 @@ final class DictationController: ObservableObject {
                 self.handleTranscriptionSuccess(result)
             }
         } catch {
+            if Task.isCancelled {
+                logger.log(.transcription, "Transcription cancelled")
+                return
+            }
             let details = detailedErrorDescription(error)
             logger.log(.transcription, "Transcription failed: \(details)")
             await MainActor.run {
@@ -250,6 +258,10 @@ final class DictationController: ObservableObject {
                 }
                 self.logger.log(.insertion, "Insertion completed successfully")
             } catch {
+                if Task.isCancelled {
+                    self.logger.log(.insertion, "Insertion cancelled")
+                    return
+                }
                 let details = self.detailedErrorDescription(error)
                 await MainActor.run {
                     let message = "Insertion failed: \(error.localizedDescription)"

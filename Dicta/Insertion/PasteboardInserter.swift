@@ -20,7 +20,7 @@ final class PasteboardInserter: TextInserter {
                 throw InsertionError.insertionFailed
             }
 
-            try await Task.sleep(nanoseconds: 100_000_000)
+            try await Task.sleep(nanoseconds: 80_000_000)
             guard AXIsProcessTrusted() else {
                 throw InsertionError.accessibilityDenied
             }

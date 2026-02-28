@@ -16,6 +16,7 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
         if resolvedLocale.identifier != locale.identifier {
             logger.log(.transcription, "Requested locale \(locale.identifier) not supported; using \(resolvedLocale.identifier)")
         }
+        logger.log(.transcription, "AppleSpeech start (file: \(url.lastPathComponent), locale: \(resolvedLocale.identifier), preferOnDevice: \(preferOnDevice))")
         guard let recognizer = SFSpeechRecognizer(locale: resolvedLocale) else {
             throw TranscriptionError.recognizerUnavailable
         }
@@ -41,6 +42,7 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
                 let task = recognizer.recognitionTask(with: request) { result, error in
                     if let result, result.isFinal {
                         let text = result.bestTranscription.formattedString.trimmingCharacters(in: .whitespacesAndNewlines)
+                        self.logger.log(.transcription, "AppleSpeech final result (length: \(text.count))")
                         if text.isEmpty {
                             resumeBox.resume(throwing: TranscriptionError.noSpeechDetected)
                         } else {
@@ -54,6 +56,7 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
                         return
                     }
                     if let error {
+                        self.logger.log(.transcription, "AppleSpeech error: \(error.localizedDescription)")
                         resumeBox.resume(throwing: self.map(error: error))
                         return
                     }
