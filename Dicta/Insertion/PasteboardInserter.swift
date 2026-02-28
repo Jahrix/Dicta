@@ -21,9 +21,6 @@ final class PasteboardInserter: TextInserter {
             }
 
             try await Task.sleep(nanoseconds: 80_000_000)
-            guard AXIsProcessTrusted() else {
-                throw InsertionError.accessibilityDenied
-            }
             guard let frontmost = NSWorkspace.shared.frontmostApplication else {
                 throw InsertionError.noFocusedApp
             }
