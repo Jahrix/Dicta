@@ -27,6 +27,7 @@ final class AudioRecorder {
     private var recordingURL: URL?
     private var startTime: Date?
     private var converter: AVAudioConverter?
+    private let writerQueue = DispatchQueue(label: "com.dicta.audio.writer", qos: .utility)
     private let sessionGuard = AudioSessionGuard()
     private let logger: DiagnosticsLogger
     var onConfigurationChange: (() -> Void)?
@@ -47,6 +48,7 @@ final class AudioRecorder {
     private var lastNonSilentLogAt: Date?
     private var didLogMissingInt16 = false
     private var didLogMissingFloat = false
+    private var didLogFirstBuffer = false
 
     init(logger: DiagnosticsLogger) {
         self.logger = logger
@@ -63,21 +65,38 @@ final class AudioRecorder {
         engine.reset()
 
         let input = engine.inputNode
-        let inputFormat = input.outputFormat(forBus: 0)
+        let inputFormat = input.inputFormat(forBus: 0)
         converter = AVAudioConverter(from: inputFormat, to: targetFormat)
 
         let url = Self.makeRecordingURL()
-        audioFile = try AVAudioFile(forWriting: url, settings: targetFormat.settings)
+        // Be explicit about linear PCM settings so the file format matches `targetFormat` exactly.
+        // Mismatches here can trigger Objective-C exceptions inside AVAudioFile.write(from:).
+        var fileSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: targetFormat.sampleRate,
+            AVNumberOfChannelsKey: Int(targetFormat.channelCount),
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false,
+            // `targetFormat` is non-interleaved; ensure the file is created the same way.
+            AVLinearPCMIsNonInterleaved: true
+        ]
+        audioFile = try AVAudioFile(forWriting: url, settings: fileSettings)
         recordingURL = url
         startTime = Date()
         resetStats(sampleRate: targetFormat.sampleRate, channels: Int(targetFormat.channelCount))
+        didLogFirstBuffer = false
 
         sessionGuard.start()
         logger.log(.audio, "Recording to \(url.path)")
 
         input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
-            guard let self, let converter = self.converter, let audioFile = self.audioFile else { return }
+            guard let self, let converter = self.converter else { return }
+            if !self.didLogFirstBuffer {
+                self.didLogFirstBuffer = true
+                self.logger.log(.audio, "First audio buffer received (input: \(inputFormat.sampleRate)Hz/\(inputFormat.channelCount)ch, target: \(self.targetFormat.sampleRate)Hz/\(self.targetFormat.channelCount)ch)")
+            }
             self.markFramesReceived(frameCount: Int(buffer.frameLength))
             let ratio = self.targetFormat.sampleRate / inputFormat.sampleRate
             let outputFrameCapacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 1
@@ -88,16 +107,32 @@ final class AudioRecorder {
                 outStatus.pointee = .haveData
                 return buffer
             }
-            converter.convert(to: convertedBuffer, error: &error, withInputFrom: inputBlock)
+            let status = converter.convert(to: convertedBuffer, error: &error, withInputFrom: inputBlock)
             if let error {
                 self.logger.log(.audio, "Conversion error: \(error.localizedDescription)")
                 return
             }
-            do {
-                try audioFile.write(from: convertedBuffer)
-                self.updateStats(with: convertedBuffer)
-            } catch {
-                self.logger.log(.audio, "Write error: \(error.localizedDescription)")
+            guard status != .error else {
+                self.logger.log(.audio, "Conversion failed (status=.error)")
+                return
+            }
+            // Avoid writing empty buffers; some AVAudioFile implementations can assert/throw.
+            guard convertedBuffer.frameLength > 0 else {
+                return
+            }
+            guard let bufferCopy = self.copyBuffer(convertedBuffer) else { return }
+            self.writerQueue.async { [weak self] in
+                guard let self, let audioFile = self.audioFile else { return }
+                let fileFormat = audioFile.processingFormat
+                if fileFormat.sampleRate != self.targetFormat.sampleRate || fileFormat.channelCount != self.targetFormat.channelCount {
+                    self.logger.log(.audio, "File format mismatch (file: \(fileFormat.sampleRate)Hz/\(fileFormat.channelCount)ch, target: \(self.targetFormat.sampleRate)Hz/\(self.targetFormat.channelCount)ch)")
+                }
+                do {
+                    try audioFile.write(from: bufferCopy)
+                    self.updateStats(with: bufferCopy)
+                } catch {
+                    self.logger.log(.audio, "Write error: \(error.localizedDescription)")
+                }
             }
         }
 
@@ -110,6 +145,9 @@ final class AudioRecorder {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         sessionGuard.stop()
+        writerQueue.sync {
+            self.audioFile = nil
+        }
 
         guard let url = recordingURL else {
             throw RecordingError.missingFile
@@ -132,6 +170,9 @@ final class AudioRecorder {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         sessionGuard.stop()
+        writerQueue.sync {
+            self.audioFile = nil
+        }
 
         if let url = recordingURL {
             try? FileManager.default.removeItem(at: url)
@@ -144,6 +185,40 @@ final class AudioRecorder {
         recordingURL = nil
         startTime = nil
         converter = nil
+    }
+
+    private func copyBuffer(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer? {
+        guard let copy = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: buffer.frameCapacity) else { return nil }
+        copy.frameLength = buffer.frameLength
+        let channels = Int(buffer.format.channelCount)
+
+        if let src = buffer.int16ChannelData, let dst = copy.int16ChannelData {
+            let byteCount = Int(buffer.frameLength) * MemoryLayout<Int16>.size
+            for channel in 0..<channels {
+                memcpy(dst[channel], src[channel], byteCount)
+            }
+            return copy
+        }
+
+        if let src = buffer.floatChannelData, let dst = copy.floatChannelData {
+            let byteCount = Int(buffer.frameLength) * MemoryLayout<Float>.size
+            for channel in 0..<channels {
+                memcpy(dst[channel], src[channel], byteCount)
+            }
+            return copy
+        }
+
+        let srcList = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: buffer.audioBufferList))
+        let dstList = UnsafeMutableAudioBufferListPointer(copy.mutableAudioBufferList)
+        let count = min(srcList.count, dstList.count)
+        for index in 0..<count {
+            let srcBuffer = srcList[index]
+            let dstBuffer = dstList[index]
+            if let srcData = srcBuffer.mData, let dstData = dstBuffer.mData {
+                memcpy(dstData, srcData, Int(srcBuffer.mDataByteSize))
+            }
+        }
+        return copy
     }
 
     private func trimTrailingSilence(url: URL, threshold: Int16 = 500) throws {
