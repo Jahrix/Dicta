@@ -63,6 +63,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         microphoneStatusItem.isEnabled = false
         speechStatusItem.isEnabled = false
         accessibilityStatusItem.isEnabled = false
+        lastTranscriptItem.isEnabled = false
+        copyLastTranscriptItem.isEnabled = false
+        pasteLastTranscriptItem.isEnabled = false
+        showLastErrorItem.isEnabled = false
+        copyLastErrorItem.isEnabled = false
 
         menu.addItem(toggleItem)
         menu.addItem(statusLineItem)
@@ -97,6 +102,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(settingsItem)
         menu.addItem(NSMenuItem.separator())
         menu.addItem(quitItem)
+
+        refreshPermissionStatus()
     }
 
     private func bindViewModel() {
@@ -131,17 +138,28 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             .store(in: &cancellables)
     }
 
+    func menuWillOpen(_ menu: NSMenu) {
+        refreshPermissionStatus()
+        statusLineItem.title = "Status: \(viewModel.statusLine)"
+    }
+
+    private func refreshPermissionStatus() {
+        microphoneStatusItem.title = viewModel.permissionStatusLabel(for: .microphone)
+        speechStatusItem.title = viewModel.permissionStatusLabel(for: .speech)
+        accessibilityStatusItem.title = viewModel.permissionStatusLabel(for: .accessibility)
+    }
+
     private func icon(for state: DictationState) -> NSImage? {
         let symbolName: String
         switch state {
         case .idle, .armed:
-            symbolName = "mic"
+            symbolName = "mic.circle"
         case .recording:
-            symbolName = "mic.fill"
+            symbolName = "mic.circle.fill"
         case .stopping:
-            symbolName = "stop.circle"
+            symbolName = "stop.circle.fill"
         case .transcribing:
-            symbolName = "waveform"
+            symbolName = "waveform.circle"
         case .inserting:
             symbolName = "arrow.down.doc"
         case .error:
@@ -150,6 +168,19 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)
         image?.isTemplate = true
         return image
+    }
+
+    private func tintColor(for state: DictationState) -> NSColor? {
+        switch state {
+        case .recording:
+            return NSColor.systemRed
+        case .transcribing, .inserting, .stopping:
+            return NSColor.systemOrange
+        case .error:
+            return NSColor.systemRed
+        case .idle, .armed:
+            return nil
+        }
     }
 
     @objc private func toggleDictation() {
@@ -170,6 +201,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
     }
 
+    @objc private func showDiagnostics() {
+        viewModel.showDiagnostics()
+    }
+
     @objc private func showLastError() {
         guard !viewModel.lastError.isEmpty else { return }
         let alert = NSAlert()
@@ -188,8 +223,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         viewModel.copyDebugSummary()
     }
 
-    @objc private func showPermissions() {
-        viewModel.showPermissions()
+    @objc private func openMicrophoneSettings() {
+        viewModel.openSystemSettings(for: .microphone)
+    }
+
+    @objc private func openSpeechSettings() {
+        viewModel.openSystemSettings(for: .speech)
+    }
+
+    @objc private func openAccessibilitySettings() {
+        viewModel.openSystemSettings(for: .accessibility)
     }
 
     @objc private func showSettings() {

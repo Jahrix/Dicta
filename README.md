@@ -2,6 +2,12 @@
 
 Dicta is a menu bar dictation app for macOS 13+ that behaves like Apple Dictation: press a global hotkey, record, transcribe, and insert into the focused app.
 
+## How Dicta Works
+- Press the hotkey to start listening (HUD + menu icon update).
+- Speak, then stop with the hotkey or let Dicta auto-stop on silence.
+- Dicta transcribes with Apple Speech and inserts text into the focused app.
+- If insertion fails, Dicta keeps the transcript available in the menu.
+
 ## Build & Run
 1. Open `Dicta.xcodeproj` in Xcode 15+.
 2. Select the `Dicta` target.
@@ -22,7 +28,7 @@ Use the Diagnostics menu to check status and open System Settings.
 - Default: Option + Space (⌥Space)
 - Hotkey is configurable in Settings.
 
-### Karabiner suggestion (Fn+Delete → F18)
+### Recommended Karabiner mapping (Fn+Delete → F18)
 If you want an Fn+Delete style hotkey, map it to F18 in Karabiner and bind Dicta to F18:
 1. Open Karabiner-Elements.
 2. Add a Simple Modification: `fn + delete` → `f18`.
@@ -35,9 +41,10 @@ If you want an Fn+Delete style hotkey, map it to F18 in Karabiner and bind Dicta
 You can toggle “Restore clipboard after paste” for safety vs speed.
 
 ## Troubleshooting
+- **Permissions missing**: Use the menu bar → Permissions Status to open System Settings for Microphone/Speech/Accessibility.
+- **Noisy room**: Increase the speech detection threshold or use the “Noisy Room Preset” in Settings.
 - **Paste not working**: Ensure Accessibility permission is granted (System Settings → Privacy & Security → Accessibility). Some apps require it to post keystrokes.
 - **No transcription**: Check Speech Recognition permission and selected language. If on-device is unavailable, Dicta will fall back to server-based recognition.
-- **Permissions stuck**: Use Diagnostics → Permissions Status → Open System Settings.
 - **Hotkey not firing**: Re-record the shortcut in Settings. Avoid shortcuts used by other apps.
 
 ## Debug Bundle
