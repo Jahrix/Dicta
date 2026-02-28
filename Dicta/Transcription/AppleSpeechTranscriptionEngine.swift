@@ -3,6 +3,7 @@ import Speech
 
 final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
     private let logger: DiagnosticsLogger
+    private let postProcessor = PostProcessor()
 
     init(logger: DiagnosticsLogger) {
         self.logger = logger
@@ -30,6 +31,11 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
         let request = SFSpeechURLRecognitionRequest(url: url)
         request.taskHint = .dictation
         request.shouldReportPartialResults = false
+        let contextualStrings = postProcessor.contextualStrings
+        if !contextualStrings.isEmpty {
+            request.contextualStrings = contextualStrings
+            logger.log(.transcription, "Contextual strings loaded (\(contextualStrings.count))", verbose: true)
+        }
         if preferOnDevice && recognizer.supportsOnDeviceRecognition {
             request.requiresOnDeviceRecognition = true
         }

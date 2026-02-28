@@ -9,7 +9,7 @@ final class PasteboardInserter: TextInserter {
         self.logger = logger
     }
 
-    func insert(text: String, restoreClipboard: Bool) async throws {
+    func insert(text: String, restoreClipboard: Bool, targetApp: FrontmostApp?) async throws {
         let pasteboard = NSPasteboard.general
         let previousItems = restoreClipboard ? snapshotPasteboardItems(from: pasteboard) : nil
 
@@ -20,11 +20,30 @@ final class PasteboardInserter: TextInserter {
                 throw InsertionError.insertionFailed
             }
 
-            try await Task.sleep(nanoseconds: 80_000_000)
+            if let targetApp {
+                logger.log(.insertion, "Captured frontmost app: \(targetApp.bundleIdentifier ?? "unknown") pid=\(targetApp.processIdentifier)")
+                if let app = NSRunningApplication(processIdentifier: targetApp.processIdentifier) {
+                    let activated = app.activate(options: NSApplication.ActivationOptions.activateIgnoringOtherApps)
+                    logger.log(.insertion, "Re-activate frontmost app: \(activated ? "success" : "failed")")
+                    if !activated {
+                        NotificationPresenter.shared.notify(title: "Dicta Insert Failed", body: "Could not re-activate \(targetApp.name).")
+                        throw InsertionError.noFocusedApp
+                    }
+                } else {
+                    NotificationPresenter.shared.notify(title: "Dicta Insert Failed", body: "Frontmost app no longer running.")
+                    throw InsertionError.noFocusedApp
+                }
+            } else {
+                logger.log(.insertion, "No frontmost app captured; using current frontmost")
+            }
+
+            try await Task.sleep(nanoseconds: 120_000_000)
             guard let frontmost = NSWorkspace.shared.frontmostApplication else {
+                NotificationPresenter.shared.notify(title: "Dicta Insert Failed", body: "No focused app to paste into.")
                 throw InsertionError.noFocusedApp
             }
             if frontmost.bundleIdentifier == Bundle.main.bundleIdentifier {
+                NotificationPresenter.shared.notify(title: "Dicta Insert Failed", body: "Dicta is frontmost; cannot paste.")
                 throw InsertionError.frontmostIsDicta
             }
 
@@ -34,7 +53,7 @@ final class PasteboardInserter: TextInserter {
             logger.log(.insertion, "Pasteboard insertion triggered for \(frontmost.bundleIdentifier ?? "unknown")")
 
             if restoreClipboard {
-                try await Task.sleep(nanoseconds: 150_000_000)
+                try await Task.sleep(nanoseconds: 400_000_000)
                 restorePasteboardItems(previousItems, to: pasteboard)
                 logger.log(.insertion, "Clipboard restored after pasteboard insertion")
             }

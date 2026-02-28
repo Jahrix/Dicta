@@ -19,6 +19,7 @@
 		E10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift */; };
 		E10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift */; };
 		E10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */; };
+		E10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift */; };
 		E10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift */; };
 		E10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift */; };
 		E10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift */; };
@@ -32,6 +33,7 @@
 		E11717171717171717171717 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11717171717171717171717 /* OnboardingView.swift */; };
 		E11818181818181818181818 /* DictationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11818181818181818181818 /* DictationState.swift */; };
 		E11919191919191919191919 /* HUDController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11919191919191919191919 /* HUDController.swift */; };
+		3901825C976A48309ECE609C /* FrontmostApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E7BF4B0A64048CFA10EA9B0 /* FrontmostApp.swift */; };
 		E13030303030303030303030 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D13030303030303030303030 /* NotificationPresenter.swift */; };
 		E12020202020202020202020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D12020202020202020202020 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
@@ -49,6 +51,7 @@
 		D10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionEngine.swift; sourceTree = "<group>"; };
 		D10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechTranscriptionEngine.swift; sourceTree = "<group>"; };
 		D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionResult.swift; sourceTree = "<group>"; };
+		D10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostProcessor.swift; sourceTree = "<group>"; };
 		D10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsertionManager.swift; sourceTree = "<group>"; };
 		D10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteboardInserter.swift; sourceTree = "<group>"; };
 		D10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityTyperInserter.swift; sourceTree = "<group>"; };
@@ -62,6 +65,7 @@
 		D11717171717171717171717 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		D11818181818181818181818 /* DictationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationState.swift; sourceTree = "<group>"; };
 		D11919191919191919191919 /* HUDController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDController.swift; sourceTree = "<group>"; };
+		3E7BF4B0A64048CFA10EA9B0 /* FrontmostApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrontmostApp.swift; sourceTree = "<group>"; };
 		D13030303030303030303030 /* NotificationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPresenter.swift; sourceTree = "<group>"; };
 		D12020202020202020202020 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D12121212121212121212121 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -145,6 +149,7 @@
 				D10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift */,
 				D10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift */,
 				D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */,
+				D10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift */,
 			);
 			path = Transcription;
 			sourceTree = "<group>";
@@ -198,6 +203,7 @@
 			children = (
 				D11818181818181818181818 /* DictationState.swift */,
 				D11919191919191919191919 /* HUDController.swift */,
+				3E7BF4B0A64048CFA10EA9B0 /* FrontmostApp.swift */,
 				D13030303030303030303030 /* NotificationPresenter.swift */,
 			);
 			path = Utilities;
@@ -301,6 +307,7 @@
 				E10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift in Sources */,
 				E10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift in Sources */,
 				E10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift in Sources */,
+				E10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift in Sources */,
 				E10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift in Sources */,
 				E10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift in Sources */,
 				E10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift in Sources */,
@@ -314,6 +321,7 @@
 				E11717171717171717171717 /* OnboardingView.swift in Sources */,
 				E11818181818181818181818 /* DictationState.swift in Sources */,
 				E11919191919191919191919 /* HUDController.swift in Sources */,
+				3901825C976A48309ECE609C /* FrontmostApp.swift in Sources */,
 				E13030303030303030303030 /* NotificationPresenter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

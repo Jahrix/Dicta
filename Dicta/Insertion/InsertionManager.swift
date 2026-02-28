@@ -2,7 +2,7 @@ import Foundation
 import ApplicationServices
 
 protocol TextInserter {
-    func insert(text: String, restoreClipboard: Bool) async throws
+    func insert(text: String, restoreClipboard: Bool, targetApp: FrontmostApp?) async throws
 }
 
 enum InsertionError: Error, LocalizedError {
@@ -36,12 +36,12 @@ final class InsertionManager {
         self.logger = logger
     }
 
-    func insert(text: String, mode: InsertionMode, restoreClipboard: Bool) async throws {
+    func insert(text: String, mode: InsertionMode, restoreClipboard: Bool, targetApp: FrontmostApp?) async throws {
         switch mode {
         case .pasteboard:
             logger.log(.insertion, "Insertion mode: pasteboard")
             do {
-                try await pasteboardInserter.insert(text: text, restoreClipboard: restoreClipboard)
+                try await pasteboardInserter.insert(text: text, restoreClipboard: restoreClipboard, targetApp: targetApp)
             } catch {
                 if let insertionError = error as? InsertionError,
                    (insertionError == .frontmostIsDicta || insertionError == .noFocusedApp) {
@@ -49,7 +49,7 @@ final class InsertionManager {
                 }
                 if AXIsProcessTrusted() {
                     logger.log(.insertion, "Pasteboard insert failed, attempting accessibility fallback: \(error.localizedDescription)")
-                    try await accessibilityInserter.insert(text: text, restoreClipboard: restoreClipboard)
+                    try await accessibilityInserter.insert(text: text, restoreClipboard: restoreClipboard, targetApp: targetApp)
                 } else {
                     throw error
                 }
@@ -57,10 +57,10 @@ final class InsertionManager {
         case .accessibility:
             do {
                 logger.log(.insertion, "Insertion mode: accessibility")
-                try await accessibilityInserter.insert(text: text, restoreClipboard: restoreClipboard)
+                try await accessibilityInserter.insert(text: text, restoreClipboard: restoreClipboard, targetApp: targetApp)
             } catch {
                 logger.log(.insertion, "Accessibility insert failed, falling back to pasteboard: \(error.localizedDescription)")
-                try await pasteboardInserter.insert(text: text, restoreClipboard: restoreClipboard)
+                try await pasteboardInserter.insert(text: text, restoreClipboard: restoreClipboard, targetApp: targetApp)
             }
         }
     }
