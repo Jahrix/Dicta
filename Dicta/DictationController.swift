@@ -371,6 +371,12 @@ final class DictationController: ObservableObject {
                 return
             }
             let stats = audioRecorder.currentStats()
+            if settings.showHUD && settings.verboseLogging {
+                let rmsText = String(format: "%.4f", stats.currentRMS)
+                let peakText = String(format: "%.4f", stats.peakRMS)
+                let thresholdText = String(format: "%.4f", settings.vadThresholdRMS)
+                hudController.show(text: "Listening… RMS \(rmsText) • Peak \(peakText) • Th \(thresholdText)", mode: .listening)
+            }
             let grace = settings.vadGraceSeconds
             if Date().timeIntervalSince(startedAt) < grace { return }
             let lastNonSilentAt = stats.lastNonSilentAt ?? startedAt
