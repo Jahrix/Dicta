@@ -138,13 +138,17 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
             }
         }
 
-        if let languageCode = locale.languageCode {
-            let preferredRegion = locale.regionCode ?? Locale.current.regionCode
-            if let preferredRegion,
-               let regionalMatch = supported.first(where: { $0.languageCode == languageCode && $0.regionCode == preferredRegion }) {
-                return regionalMatch
+        let languageCode = extractLanguageCode(from: locale)
+        if let languageCode {
+            let preferredRegion = extractRegionCode(from: locale) ?? extractRegionCode(from: Locale.current)
+            if let preferredRegion {
+                if let regionalMatch = supported.first(where: {
+                    extractLanguageCode(from: $0) == languageCode && extractRegionCode(from: $0) == preferredRegion
+                }) {
+                    return regionalMatch
+                }
             }
-            if let languageMatch = supported.first(where: { $0.languageCode == languageCode }) {
+            if let languageMatch = supported.first(where: { extractLanguageCode(from: $0) == languageCode }) {
                 return languageMatch
             }
         }
@@ -154,6 +158,20 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
         }
 
         return supported.sorted(by: { $0.identifier < $1.identifier }).first ?? locale
+    }
+
+    private func extractLanguageCode(from locale: Locale) -> String? {
+        if #available(macOS 13, *) {
+            return locale.language.languageCode?.identifier
+        }
+        return locale.languageCode
+    }
+
+    private func extractRegionCode(from locale: Locale) -> String? {
+        if #available(macOS 13, *) {
+            return locale.region?.identifier
+        }
+        return locale.regionCode
     }
 }
 
