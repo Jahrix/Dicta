@@ -24,6 +24,7 @@ struct RecordingInfo {
 final class AudioRecorder {
     private let engine = AVAudioEngine()
     private var audioFile: AVAudioFile?
+    private var fileFormat: AVAudioFormat?
     private var recordingURL: URL?
     private var startTime: Date?
     private var converter: AVAudioConverter?
@@ -82,6 +83,7 @@ final class AudioRecorder {
             AVLinearPCMIsNonInterleaved: true
         ]
         audioFile = try AVAudioFile(forWriting: url, settings: fileSettings)
+        fileFormat = audioFile?.processingFormat
         recordingURL = url
         startTime = Date()
         resetStats(sampleRate: targetFormat.sampleRate, channels: Int(targetFormat.channelCount))
@@ -122,14 +124,21 @@ final class AudioRecorder {
             }
             guard let bufferCopy = self.copyBuffer(convertedBuffer) else { return }
             self.writerQueue.async { [weak self] in
-                guard let self, let audioFile = self.audioFile else { return }
-                let fileFormat = audioFile.processingFormat
-                if fileFormat.sampleRate != self.targetFormat.sampleRate || fileFormat.channelCount != self.targetFormat.channelCount {
-                    self.logger.log(.audio, "File format mismatch (file: \(fileFormat.sampleRate)Hz/\(fileFormat.channelCount)ch, target: \(self.targetFormat.sampleRate)Hz/\(self.targetFormat.channelCount)ch)")
+                guard let self,
+                      let audioFile = self.audioFile,
+                      let fileFormat = self.fileFormat else { return }
+                let bufferToWrite: AVAudioPCMBuffer
+                if self.formatsMatch(bufferCopy.format, fileFormat) {
+                    bufferToWrite = bufferCopy
+                } else if let converted = self.convertBuffer(bufferCopy, to: fileFormat) {
+                    bufferToWrite = converted
+                } else {
+                    self.logger.log(.audio, "Skipping write: unable to match buffer format to file format")
+                    return
                 }
                 do {
-                    try audioFile.write(from: bufferCopy)
-                    self.updateStats(with: bufferCopy)
+                    try audioFile.write(from: bufferToWrite)
+                    self.updateStats(with: bufferToWrite)
                 } catch {
                     self.logger.log(.audio, "Write error: \(error.localizedDescription)")
                 }
@@ -182,6 +191,7 @@ final class AudioRecorder {
 
     private func cleanupState() {
         audioFile = nil
+        fileFormat = nil
         recordingURL = nil
         startTime = nil
         converter = nil
@@ -219,6 +229,35 @@ final class AudioRecorder {
             }
         }
         return copy
+    }
+
+    private func formatsMatch(_ lhs: AVAudioFormat, _ rhs: AVAudioFormat) -> Bool {
+        lhs.sampleRate == rhs.sampleRate &&
+        lhs.channelCount == rhs.channelCount &&
+        lhs.commonFormat == rhs.commonFormat &&
+        lhs.isInterleaved == rhs.isInterleaved
+    }
+
+    private func convertBuffer(_ buffer: AVAudioPCMBuffer, to format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        guard let converter = AVAudioConverter(from: buffer.format, to: format) else { return nil }
+        let ratio = format.sampleRate / buffer.format.sampleRate
+        let outputFrameCapacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 1
+        guard let converted = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: outputFrameCapacity) else { return nil }
+
+        var error: NSError?
+        let inputBlock: AVAudioConverterInputBlock = { _, outStatus in
+            outStatus.pointee = .haveData
+            return buffer
+        }
+        let status = converter.convert(to: converted, error: &error, withInputFrom: inputBlock)
+        if let error {
+            logger.log(.audio, "File format conversion error: \(error.localizedDescription)")
+            return nil
+        }
+        if status == .error || converted.frameLength == 0 {
+            return nil
+        }
+        return converted
     }
 
     private func trimTrailingSilence(url: URL, threshold: Int16 = 500) throws {
