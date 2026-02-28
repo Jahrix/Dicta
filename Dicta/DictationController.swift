@@ -18,9 +18,7 @@ final class DictationController: ObservableObject {
     private let insertionManager: InsertionManager
     private let hudController = HUDController()
     private let postProcessor = PostProcessor()
-
     private var currentRecordingURL: URL?
-    private var frontmostCapture: FrontmostApp?
     private var lastRecordingInfo: RecordingInfo?
     private var lastTranscriptionDuration: TimeInterval?
     private var lastTranscriptionErrorDetails: String = "none"
@@ -98,11 +96,9 @@ final class DictationController: ObservableObject {
     }
 
     func insert(text: String) async throws {
-        let targetApp = FrontmostApp.captureCurrent(excludingBundleID: Bundle.main.bundleIdentifier)
         try await insertionManager.insert(text: text,
                                           mode: settings.insertionMode,
-                                          restoreClipboard: settings.restoreClipboard,
-                                          targetApp: targetApp)
+                                          restoreClipboard: settings.restoreClipboard)
     }
 
     private func startRecordingFlow() {
@@ -113,12 +109,6 @@ final class DictationController: ObservableObject {
         startRecordingTask?.cancel()
         let requestID = UUID()
         startRequestID = requestID
-        frontmostCapture = FrontmostApp.captureCurrent(excludingBundleID: Bundle.main.bundleIdentifier)
-        if let frontmostCapture {
-            logger.log(.ui, "Captured frontmost app: \(frontmostCapture.bundleIdentifier ?? "unknown") pid=\(frontmostCapture.processIdentifier)")
-        } else {
-            logger.log(.ui, "No frontmost app captured")
-        }
         transition(to: .armed, reason: "Starting dictation")
         updateHUD(for: .armed)
         NSSound.beep()
@@ -275,10 +265,10 @@ final class DictationController: ObservableObject {
     private func handleTranscriptionSuccess(_ result: TranscriptionResult) {
         let rawText = result.text
         logger.log(.transcription, "Transcript (raw): \(rawText)", verbose: true)
-        let processedText = postProcessor.process(rawText)
+        let processedText = postProcessor.process(rawText, logger: logger)
         let finalText = normalize(text: processedText)
         logger.log(.transcription, "Transcript (post): \(finalText)", verbose: true)
-        guard !finalText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        guard !finalText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty else {
             lastTranscriptionErrorDetails = "No speech detected"
             lastInsertionMode = settings.insertionMode.rawValue
             lastInsertionResult = "skipped: no speech detected"
@@ -303,12 +293,10 @@ final class DictationController: ObservableObject {
                 try await self.withTimeout(seconds: insertionTimeout, timeoutError: InsertionError.timeout) {
                     try await self.insertionManager.insert(text: finalText,
                                                           mode: insertionMode,
-                                                          restoreClipboard: restoreClipboard,
-                                                          targetApp: self.frontmostCapture)
+                                                          restoreClipboard: restoreClipboard)
                 }
                 await MainActor.run {
                     self.lastInsertionResult = "success"
-                    self.frontmostCapture = nil
                     self.transition(to: .idle, reason: "Insertion complete")
                     self.updateHUD(for: .idle)
                 }
@@ -322,7 +310,6 @@ final class DictationController: ObservableObject {
                 await MainActor.run {
                     let message = "Insertion failed: \(error.localizedDescription)"
                     self.lastInsertionResult = "failed: \(details)"
-                    self.frontmostCapture = nil
                     self.fail(message)
                     NotificationPresenter.shared.notify(title: "Dicta Insert Failed", body: message)
                 }
@@ -334,7 +321,6 @@ final class DictationController: ObservableObject {
     private func cancelAndReset(reason: String) {
         logger.log(.state, "Cancel: \(reason)")
         isStopping = false
-        frontmostCapture = nil
         startRecordingTask?.cancel()
         startRequestID = nil
         transcriptionTask?.cancel()
