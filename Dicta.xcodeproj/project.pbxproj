@@ -3,10 +3,11 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3901825C976A48309ECE609C /* FrontmostApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E7BF4B0A64048CFA10EA9B0 /* FrontmostApp.swift */; };
 		E10101010101010101010101 /* DictaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10101010101010101010101 /* DictaApp.swift */; };
 		E10202020202020202020202 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10202020202020202020202 /* AppDelegate.swift */; };
 		E10303030303030303030303 /* DictationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10303030303030303030303 /* DictationController.swift */; };
@@ -19,8 +20,8 @@
 		E10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift */; };
 		E10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift */; };
 		E10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */; };
-		E10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift */; };
 		E10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift */; };
+		E10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift */; };
 		E10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift */; };
 		E10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift */; };
 		E11010101010101010101010 /* SettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11010101010101010101010 /* SettingsModel.swift */; };
@@ -33,12 +34,12 @@
 		E11717171717171717171717 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11717171717171717171717 /* OnboardingView.swift */; };
 		E11818181818181818181818 /* DictationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11818181818181818181818 /* DictationState.swift */; };
 		E11919191919191919191919 /* HUDController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11919191919191919191919 /* HUDController.swift */; };
-		3901825C976A48309ECE609C /* FrontmostApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E7BF4B0A64048CFA10EA9B0 /* FrontmostApp.swift */; };
-		E13030303030303030303030 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D13030303030303030303030 /* NotificationPresenter.swift */; };
 		E12020202020202020202020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D12020202020202020202020 /* Assets.xcassets */; };
+		E13030303030303030303030 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D13030303030303030303030 /* NotificationPresenter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		3E7BF4B0A64048CFA10EA9B0 /* FrontmostApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrontmostApp.swift; sourceTree = "<group>"; };
 		D10101010101010101010101 /* DictaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictaApp.swift; sourceTree = "<group>"; };
 		D10202020202020202020202 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		D10303030303030303030303 /* DictationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationController.swift; sourceTree = "<group>"; };
@@ -51,8 +52,8 @@
 		D10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionEngine.swift; sourceTree = "<group>"; };
 		D10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechTranscriptionEngine.swift; sourceTree = "<group>"; };
 		D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionResult.swift; sourceTree = "<group>"; };
-		D10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostProcessor.swift; sourceTree = "<group>"; };
 		D10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsertionManager.swift; sourceTree = "<group>"; };
+		D10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostProcessor.swift; sourceTree = "<group>"; };
 		D10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteboardInserter.swift; sourceTree = "<group>"; };
 		D10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityTyperInserter.swift; sourceTree = "<group>"; };
 		D11010101010101010101010 /* SettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModel.swift; sourceTree = "<group>"; };
@@ -65,11 +66,10 @@
 		D11717171717171717171717 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		D11818181818181818181818 /* DictationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationState.swift; sourceTree = "<group>"; };
 		D11919191919191919191919 /* HUDController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDController.swift; sourceTree = "<group>"; };
-		3E7BF4B0A64048CFA10EA9B0 /* FrontmostApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrontmostApp.swift; sourceTree = "<group>"; };
-		D13030303030303030303030 /* NotificationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPresenter.swift; sourceTree = "<group>"; };
 		D12020202020202020202020 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D12121212121212121212121 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D12222222222222222222222 /* Dicta.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = Dicta.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D13030303030303030303030 /* NotificationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPresenter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,7 +91,6 @@
 			);
 			sourceTree = "<group>";
 		};
-
 		B1B1B1B1B1B1B1B1B1B1B1B1 /* Dicta */ = {
 			isa = PBXGroup;
 			children = (
@@ -112,7 +111,6 @@
 			path = Dicta;
 			sourceTree = "<group>";
 		};
-
 		B2B2B2B2B2B2B2B2B2B2B2B2 /* MenuBar */ = {
 			isa = PBXGroup;
 			children = (
@@ -122,7 +120,6 @@
 			path = MenuBar;
 			sourceTree = "<group>";
 		};
-
 		B3B3B3B3B3B3B3B3B3B3B3B3 /* Hotkey */ = {
 			isa = PBXGroup;
 			children = (
@@ -132,7 +129,6 @@
 			path = Hotkey;
 			sourceTree = "<group>";
 		};
-
 		B4B4B4B4B4B4B4B4B4B4B4B4 /* Audio */ = {
 			isa = PBXGroup;
 			children = (
@@ -142,7 +138,6 @@
 			path = Audio;
 			sourceTree = "<group>";
 		};
-
 		B5B5B5B5B5B5B5B5B5B5B5B5 /* Transcription */ = {
 			isa = PBXGroup;
 			children = (
@@ -154,7 +149,6 @@
 			path = Transcription;
 			sourceTree = "<group>";
 		};
-
 		B6B6B6B6B6B6B6B6B6B6B6B6 /* Insertion */ = {
 			isa = PBXGroup;
 			children = (
@@ -165,7 +159,6 @@
 			path = Insertion;
 			sourceTree = "<group>";
 		};
-
 		B7B7B7B7B7B7B7B7B7B7B7B7 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
@@ -176,7 +169,6 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
-
 		B8B8B8B8B8B8B8B8B8B8B8B8 /* Diagnostics */ = {
 			isa = PBXGroup;
 			children = (
@@ -187,7 +179,6 @@
 			path = Diagnostics;
 			sourceTree = "<group>";
 		};
-
 		B9B9B9B9B9B9B9B9B9B9B9B9 /* Permissions */ = {
 			isa = PBXGroup;
 			children = (
@@ -197,7 +188,6 @@
 			path = Permissions;
 			sourceTree = "<group>";
 		};
-
 		C0C0C0C0C0C0C0C0C0C0C0C0 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
@@ -209,7 +199,6 @@
 			path = Utilities;
 			sourceTree = "<group>";
 		};
-
 		C1C1C1C1C1C1C1C1C1C1C1C1 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
@@ -219,7 +208,6 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
-
 		C2C2C2C2C2C2C2C2C2C2C2C2 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -266,6 +254,7 @@
 			buildConfigurationList = A8A8A8A8A8A8A8A8A8A8A8A8 /* Build configuration list for PBXProject "Dicta" */;
 			compatibilityVersion = "Xcode 15.0";
 			developmentRegion = en;
+			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 			);
@@ -343,7 +332,6 @@
 			};
 			name = Debug;
 		};
-
 		ACACACACACACACACACACACAC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -358,16 +346,12 @@
 			};
 			name = Release;
 		};
-
 		ADADADADADADADADADADADAD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGNING_ALLOWED = YES;
-				CODE_SIGNING_REQUIRED = YES;
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = Dicta/Resources/Info.plist;
@@ -378,20 +362,17 @@
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dicta.Dicta;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.9;
 			};
 			name = Debug;
 		};
-
 		AEAEAEAEAEAEAEAEAEAEAEAE /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGNING_ALLOWED = YES;
-				CODE_SIGNING_REQUIRED = YES;
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = Dicta/Resources/Info.plist;
@@ -402,6 +383,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.dicta.Dicta;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_VERSION = 5.9;
 			};
 			name = Release;
@@ -418,7 +400,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-
 		A9A9A9A9A9A9A9A9A9A9A9A9 /* Build configuration list for PBXNativeTarget "Dicta" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
