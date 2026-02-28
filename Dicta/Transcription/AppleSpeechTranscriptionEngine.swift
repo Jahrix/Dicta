@@ -4,6 +4,7 @@ import Speech
 final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
     private let logger: DiagnosticsLogger
     private let postProcessor = PostProcessor()
+    private let timeoutSeconds: Double = 20.0
 
     init(logger: DiagnosticsLogger) {
         self.logger = logger
@@ -42,36 +43,39 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
 
         let taskBox = RecognitionTaskBox()
 
-        return try await withTaskCancellationHandler(operation: {
-            try await withCheckedThrowingContinuation { continuation in
-                let resumeBox = SingleResumeBox(continuation)
-                let task = recognizer.recognitionTask(with: request) { result, error in
-                    if let result, result.isFinal {
-                        let text = result.bestTranscription.formattedString.trimmingCharacters(in: .whitespacesAndNewlines)
-                        self.logger.log(.transcription, "AppleSpeech final result (length: \(text.count))")
-                        if text.isEmpty {
-                            resumeBox.resume(throwing: TranscriptionError.noSpeechDetected)
-                        } else {
-                            let confidence = result.bestTranscription.segments.map { Double($0.confidence) }.reduce(0.0, +) / Double(max(result.bestTranscription.segments.count, 1))
-                            let durations = result.bestTranscription.segments.map { $0.duration }
-                            resumeBox.resume(returning: TranscriptionResult(text: text, confidence: confidence, segmentDurations: durations))
+        return try await withTimeout(seconds: timeoutSeconds, timeoutError: TranscriptionError.timeout) {
+            try await withTaskCancellationHandler(operation: {
+                try await withCheckedThrowingContinuation { continuation in
+                    let resumeBox = SingleResumeBox(continuation)
+                    let task = recognizer.recognitionTask(with: request) { result, error in
+                        if let result, result.isFinal {
+                            let rawText = result.bestTranscription.formattedString
+                            self.logger.log(.transcription, "AppleSpeech final result (length: \(rawText.count))")
+                            let processedText = self.postProcessor.process(rawText, logger: self.logger)
+                            if processedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                resumeBox.resume(throwing: TranscriptionError.noSpeechDetected)
+                            } else {
+                                let confidence = result.bestTranscription.segments.map { Double($0.confidence) }.reduce(0.0, +) / Double(max(result.bestTranscription.segments.count, 1))
+                                let durations = result.bestTranscription.segments.map { $0.duration }
+                                resumeBox.resume(returning: TranscriptionResult(text: processedText, confidence: confidence, segmentDurations: durations))
+                            }
+                            if let error {
+                                self.logger.log(.transcription, "Recognition finished with error: \(error.localizedDescription)")
+                            }
+                            return
                         }
                         if let error {
-                            self.logger.log(.transcription, "Recognition finished with error: \(error.localizedDescription)")
+                            self.logger.log(.transcription, "AppleSpeech error: \(error.localizedDescription)")
+                            resumeBox.resume(throwing: self.map(error: error))
+                            return
                         }
-                        return
                     }
-                    if let error {
-                        self.logger.log(.transcription, "AppleSpeech error: \(error.localizedDescription)")
-                        resumeBox.resume(throwing: self.map(error: error))
-                        return
-                    }
+                    taskBox.set(task)
                 }
-                taskBox.set(task)
-            }
-        }, onCancel: {
-            taskBox.cancel()
-        })
+            }, onCancel: {
+                taskBox.cancel()
+            })
+        }
     }
 
     private func map(error: Error) -> Error {
@@ -100,6 +104,21 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
             return TranscriptionError.onDeviceUnavailable
         }
         return TranscriptionError.underlying("\(description) [\(codeInfo)]")
+    }
+
+    private func withTimeout<T>(seconds: Double, timeoutError: Error, operation: @escaping () async throws -> T) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await operation()
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+                throw timeoutError
+            }
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
+        }
     }
 
     private func resolveLocale(from locale: Locale) -> Locale {

@@ -7,6 +7,8 @@ final class SettingsModel: ObservableObject {
     @Published var hotkey: Hotkey { didSet { saveHotkey() } }
     @Published var insertionMode: InsertionMode { didSet { defaults.set(insertionMode.rawValue, forKey: Keys.insertionMode) } }
     @Published var languageIdentifier: String { didSet { defaults.set(languageIdentifier, forKey: Keys.languageIdentifier) } }
+    @Published var postProcessorReplacements: [String: String] { didSet { savePostProcessorReplacements() } }
+    @Published var postProcessorJSONPath: String { didSet { defaults.set(postProcessorJSONPath, forKey: Keys.postProcessorJSONPath) } }
     @Published var maxRecordingSeconds: Double { didSet { defaults.set(maxRecordingSeconds, forKey: Keys.maxRecordingSeconds) } }
     @Published var transcriptionTimeoutSeconds: Double { didSet { defaults.set(transcriptionTimeoutSeconds, forKey: Keys.transcriptionTimeoutSeconds) } }
     @Published var insertionTimeoutSeconds: Double { didSet { defaults.set(insertionTimeoutSeconds, forKey: Keys.insertionTimeoutSeconds) } }
@@ -28,6 +30,8 @@ final class SettingsModel: ObservableObject {
             Keys.hotkeyModifiers: Int(Hotkey.default.modifiers),
             Keys.insertionMode: InsertionMode.pasteboard.rawValue,
             Keys.languageIdentifier: Self.defaultLanguageIdentifier(),
+            Keys.postProcessorReplacements: Data(),
+            Keys.postProcessorJSONPath: "",
             Keys.maxRecordingSeconds: 60.0,
             Keys.transcriptionTimeoutSeconds: 20.0,
             Keys.insertionTimeoutSeconds: 2.0,
@@ -46,7 +50,10 @@ final class SettingsModel: ObservableObject {
         let modifiers = defaults.integer(forKey: Keys.hotkeyModifiers)
         hotkey = Hotkey(keyCode: UInt32(keyCode), modifiers: UInt32(modifiers))
         insertionMode = InsertionMode(rawValue: defaults.string(forKey: Keys.insertionMode) ?? InsertionMode.pasteboard.rawValue) ?? .pasteboard
-        languageIdentifier = defaults.string(forKey: Keys.languageIdentifier) ?? Self.defaultLanguageIdentifier()
+        let storedLanguage = defaults.string(forKey: Keys.languageIdentifier)
+        languageIdentifier = (storedLanguage?.isEmpty == false) ? storedLanguage! : Self.defaultLanguageIdentifier()
+        postProcessorReplacements = Self.decodePostProcessorReplacements(from: defaults.data(forKey: Keys.postProcessorReplacements))
+        postProcessorJSONPath = defaults.string(forKey: Keys.postProcessorJSONPath) ?? ""
         maxRecordingSeconds = defaults.double(forKey: Keys.maxRecordingSeconds)
         transcriptionTimeoutSeconds = defaults.double(forKey: Keys.transcriptionTimeoutSeconds)
         insertionTimeoutSeconds = defaults.double(forKey: Keys.insertionTimeoutSeconds)
@@ -66,11 +73,18 @@ final class SettingsModel: ObservableObject {
         defaults.set(Int(hotkey.modifiers), forKey: Keys.hotkeyModifiers)
     }
 
+    private func savePostProcessorReplacements() {
+        guard let data = try? JSONEncoder().encode(postProcessorReplacements) else { return }
+        defaults.set(data, forKey: Keys.postProcessorReplacements)
+    }
+
     enum Keys {
         static let hotkeyKeyCode = "dicta.hotkey.keyCode"
         static let hotkeyModifiers = "dicta.hotkey.modifiers"
         static let insertionMode = "dicta.insertion.mode"
         static let languageIdentifier = "dicta.language.identifier"
+        static let postProcessorReplacements = "dicta.postProcessor.replacements"
+        static let postProcessorJSONPath = "dicta.postProcessor.jsonPath"
         static let maxRecordingSeconds = "dicta.maxRecordingSeconds"
         static let transcriptionTimeoutSeconds = "dicta.transcriptionTimeoutSeconds"
         static let insertionTimeoutSeconds = "dicta.insertionTimeoutSeconds"
@@ -87,29 +101,11 @@ final class SettingsModel: ObservableObject {
 
     private static func defaultLanguageIdentifier() -> String {
         let supported = Set(SFSpeechRecognizer.supportedLocales().map { normalizeLocaleIdentifier($0.identifier) })
-        let current = normalizeLocaleIdentifier(Locale.current.identifier)
-        if supported.contains(current) {
-            return current
-        }
-
-        let languageCode = Locale.current.languageCode ?? "en"
-        if let regionCode = Locale.current.regionCode {
-            let candidate = normalizeLocaleIdentifier("\(languageCode)-\(regionCode)")
-            if supported.contains(candidate) {
-                return candidate
-            }
-        }
-
-        let languagePrefix = "\(languageCode)-"
-        if let match = supported.sorted().first(where: { $0.hasPrefix(languagePrefix) }) {
-            return match
-        }
-
         if supported.contains("en-US") {
             return "en-US"
         }
 
-        return supported.sorted().first ?? current
+        return supported.sorted().first ?? "en-US"
     }
 
     private static func normalizeLocaleIdentifier(_ identifier: String) -> String {
@@ -119,6 +115,11 @@ final class SettingsModel: ObservableObject {
         let language = parts[0].lowercased()
         let region = parts[1].uppercased()
         return "\(language)-\(region)"
+    }
+
+    private static func decodePostProcessorReplacements(from data: Data?) -> [String: String] {
+        guard let data, !data.isEmpty else { return [:] }
+        return (try? JSONDecoder().decode([String: String].self, from: data)) ?? [:]
     }
 }
 
