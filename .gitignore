@@ -20,6 +20,9 @@ xcuserdata/
 # SwiftPM
 .build/
 
+# Sparkle tools
+.sparkle-tools/
+
 # App bundles
 *.app
 

@@ -31,7 +31,7 @@
     <key>SUFeedURL</key>
     <string>https://jahrix.github.io/Dicta/appcast.xml</string>
     <key>SUPublicEDKey</key>
-    <string>&lt;PUBLIC_EDDSA_KEY&gt;</string>
+    <string>IWjVNN6N3QS+81z2eF6LPv0+DkIrUAL0EnEHjNnGhSc=</string>
     <key>NSHumanReadableCopyright</key>
     <string>© 2026 Dicta</string>
     <key>NSPrincipalClass</key>
