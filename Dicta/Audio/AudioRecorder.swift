@@ -32,6 +32,7 @@ final class AudioRecorder {
     private let sessionGuard = AudioSessionGuard()
     private let logger: DiagnosticsLogger
     var onConfigurationChange: (() -> Void)?
+    var onAudioBuffer: ((AVAudioPCMBuffer) -> Void)?
     var vadThresholdRMS: Double = 0.015
 
     private let targetFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: 16_000, channels: 1, interleaved: false)!
@@ -123,6 +124,7 @@ final class AudioRecorder {
                 return
             }
             guard let bufferCopy = self.copyBuffer(convertedBuffer) else { return }
+            self.onAudioBuffer?(bufferCopy)
             self.writerQueue.async { [weak self] in
                 guard let self,
                       let audioFile = self.audioFile,
@@ -154,6 +156,7 @@ final class AudioRecorder {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         sessionGuard.stop()
+        onAudioBuffer = nil
         writerQueue.sync {
             self.audioFile = nil
         }
@@ -179,6 +182,7 @@ final class AudioRecorder {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         sessionGuard.stop()
+        onAudioBuffer = nil
         writerQueue.sync {
             self.audioFile = nil
         }

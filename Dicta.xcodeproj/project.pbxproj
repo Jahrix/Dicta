@@ -20,6 +20,7 @@
 		E10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift */; };
 		E10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift */; };
 		E10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */; };
+		E10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift */; };
 		E10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift */; };
 		E10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift */; };
 		E10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift */; };
@@ -54,6 +55,7 @@
 		D10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionEngine.swift; sourceTree = "<group>"; };
 		D10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechTranscriptionEngine.swift; sourceTree = "<group>"; };
 		D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionResult.swift; sourceTree = "<group>"; };
+		D10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechStreamingEngine.swift; sourceTree = "<group>"; };
 		D10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhraseMapStore.swift; sourceTree = "<group>"; };
 		D10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextPostProcessor.swift; sourceTree = "<group>"; };
 		D10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsertionManager.swift; sourceTree = "<group>"; };
@@ -147,6 +149,7 @@
 			children = (
 				D10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift */,
 				D10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift */,
+				D10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift */,
 				D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */,
 				D10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift */,
 				D10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift */,
@@ -301,6 +304,7 @@
 				E10909090909090909090909 /* AudioSessionGuard.swift in Sources */,
 				E10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift in Sources */,
 				E10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift in Sources */,
+				E10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift in Sources */,
 				E10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift in Sources */,
 				E10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift in Sources */,
 				E10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift in Sources */,

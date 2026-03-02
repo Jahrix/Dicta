@@ -39,9 +39,6 @@ final class DictationController: ObservableObject {
     private var noFramesTask: Task<Void, Never>?
     private var stateEnteredAt = Date()
     private var isStopping = false
-    private var shouldUseStreaming: Bool {
-        settings.transcriptionBackend == SettingsModel.TranscriptionBackend.appleSpeech.rawValue
-    }
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -50,13 +47,8 @@ final class DictationController: ObservableObject {
         self.permissions = permissions
         self.logger = logger
         self.audioRecorder = AudioRecorder(logger: logger)
-        if settings.transcriptionBackend == SettingsModel.TranscriptionBackend.localWhisperCpp.rawValue {
-            self.transcriptionEngine = LocalWhisperCppEngine(settings: settings, logger: logger)
-            self.streamingEngine = LocalWhisperCppEngine(settings: settings, logger: logger)
-        } else {
-            self.transcriptionEngine = AppleSpeechTranscriptionEngine(settings: settings, logger: logger)
-            self.streamingEngine = AppleSpeechStreamingEngine(settings: settings, logger: logger)
-        }
+        self.transcriptionEngine = AppleSpeechTranscriptionEngine(settings: settings, logger: logger)
+        self.streamingEngine = AppleSpeechStreamingEngine(settings: settings, logger: logger)
         self.insertionManager = InsertionManager(
             pasteboardInserter: PasteboardInserter(logger: logger),
             accessibilityInserter: AccessibilityTyperInserter(logger: logger),
@@ -145,17 +137,15 @@ final class DictationController: ObservableObject {
             return
         }
 
-        if settings.transcriptionBackend == SettingsModel.TranscriptionBackend.appleSpeech.rawValue {
-            var speechStatus = permissions.speechStatus()
-            if speechStatus == .notDetermined {
-                speechStatus = await permissions.requestSpeech()
+        var speechStatus = permissions.speechStatus()
+        if speechStatus == .notDetermined {
+            speechStatus = await permissions.requestSpeech()
+        }
+        guard speechStatus == .granted else {
+            await MainActor.run {
+                self.fail("Speech recognition permission not granted")
             }
-            guard speechStatus == .granted else {
-                await MainActor.run {
-                    self.fail("Speech recognition permission not granted")
-                }
-                return
-            }
+            return
         }
 
         let shouldProceed = await MainActor.run { [weak self] in
@@ -172,9 +162,7 @@ final class DictationController: ObservableObject {
                 self.transition(to: .recording(startedAt: Date()), reason: "Recording started")
                 self.startMaxRecordingTimer()
                 self.startNoFramesCheck()
-                if self.shouldUseStreaming {
-                    self.startStreamingSession()
-                }
+                self.startStreamingSession()
                 self.updateHUD(for: self.state)
             }
         } catch {
@@ -213,6 +201,7 @@ final class DictationController: ObservableObject {
         let languageIdentifier = settings.languageIdentifier
         let preferOnDevice = settings.preferOnDevice
         let transcriptionTimeout = settings.transcriptionTimeoutSeconds > 0 ? settings.transcriptionTimeoutSeconds : 20.0
+        let useStreaming = streamingEngine.supportsStreaming
 
         transcriptionTask?.cancel()
         transcriptionTask = Task.detached { [weak self] in
@@ -223,7 +212,7 @@ final class DictationController: ObservableObject {
                 }
             }
             do {
-                if self.shouldUseStreaming {
+                if useStreaming {
                     await self.streamingEngine.stopStreaming()
                 }
                 let recordingInfo = try await self.audioRecorder.stopRecording()
@@ -243,7 +232,7 @@ final class DictationController: ObservableObject {
                 }
                 var streamingFinal: String?
                 var shouldUseStreaming = false
-                if self.shouldUseStreaming {
+                if useStreaming {
                     streamingFinal = await self.waitForStreamingFinal(timeout: 2.0)
                     shouldUseStreaming = await MainActor.run { !self.streamingFailed }
                 }
