@@ -9,18 +9,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private var cancellables = Set<AnyCancellable>()
 
     private let statusLineItem = NSMenuItem(title: "Status: Idle", action: nil, keyEquivalent: "")
-    private let toggleItem = NSMenuItem(title: "Start Dictation", action: #selector(toggleDictation), keyEquivalent: "")
+    private let longToggleItem = NSMenuItem(title: "Start Long Dictation", action: #selector(toggleLongDictation), keyEquivalent: "")
+    private let pushToTalkInfoItem = NSMenuItem(title: "Push-to-Talk", action: nil, keyEquivalent: "")
+    private let longDictationInfoItem = NSMenuItem(title: "Long Dictation", action: nil, keyEquivalent: "")
     private let lastTranscriptItem = NSMenuItem(title: "Last Transcript", action: nil, keyEquivalent: "")
     private let copyLastTranscriptItem = NSMenuItem(title: "Copy", action: #selector(copyLastTranscript), keyEquivalent: "")
     private let pasteLastTranscriptItem = NSMenuItem(title: "Paste Again", action: #selector(pasteLastTranscript), keyEquivalent: "")
-
-    private let permissionsItem = NSMenuItem(title: "Permissions Status", action: nil, keyEquivalent: "")
-    private let microphoneStatusItem = NSMenuItem(title: "Microphone: --", action: nil, keyEquivalent: "")
-    private let speechStatusItem = NSMenuItem(title: "Speech Recognition: --", action: nil, keyEquivalent: "")
-    private let accessibilityStatusItem = NSMenuItem(title: "Accessibility: --", action: nil, keyEquivalent: "")
-    private let openMicrophoneSettingsItem = NSMenuItem(title: "Open Microphone Settings", action: #selector(openMicrophoneSettings), keyEquivalent: "")
-    private let openSpeechSettingsItem = NSMenuItem(title: "Open Speech Settings", action: #selector(openSpeechSettings), keyEquivalent: "")
-    private let openAccessibilitySettingsItem = NSMenuItem(title: "Open Accessibility Settings", action: #selector(openAccessibilitySettings), keyEquivalent: "")
 
     private let diagnosticsItem = NSMenuItem(title: "Diagnostics", action: nil, keyEquivalent: "")
     private let openDiagnosticsItem = NSMenuItem(title: "Open Diagnostics…", action: #selector(showDiagnostics), keyEquivalent: "")
@@ -29,7 +23,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let copyLastErrorItem = NSMenuItem(title: "Copy Last Error", action: #selector(copyLastError), keyEquivalent: "")
     private let copyDebugSummaryItem = NSMenuItem(title: "Copy Debug Summary", action: #selector(copyDebugSummary), keyEquivalent: "")
 
-    private let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
+    private let settingsItem = NSMenuItem(title: "Open Settings…", action: #selector(showSettings), keyEquivalent: ",")
     private let quitItem = NSMenuItem(title: "Quit Dicta", action: #selector(quitApp), keyEquivalent: "q")
 
     init(viewModel: MenuViewModel) {
@@ -45,32 +39,23 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         statusItem.button?.image = icon(for: .idle)
         statusItem.button?.image?.isTemplate = true
 
-        toggleItem.target = self
-        copyLastTranscriptItem.target = self
-        pasteLastTranscriptItem.target = self
-        openMicrophoneSettingsItem.target = self
-        openSpeechSettingsItem.target = self
-        openAccessibilitySettingsItem.target = self
-        openDiagnosticsItem.target = self
-        exportLogsItem.target = self
-        showLastErrorItem.target = self
-        copyLastErrorItem.target = self
-        copyDebugSummaryItem.target = self
-        settingsItem.target = self
-        quitItem.target = self
+        [longToggleItem, copyLastTranscriptItem, pasteLastTranscriptItem, openDiagnosticsItem,
+         exportLogsItem, showLastErrorItem, copyLastErrorItem, copyDebugSummaryItem, settingsItem, quitItem]
+            .forEach { $0.target = self }
 
         statusLineItem.isEnabled = false
-        microphoneStatusItem.isEnabled = false
-        speechStatusItem.isEnabled = false
-        accessibilityStatusItem.isEnabled = false
+        pushToTalkInfoItem.isEnabled = false
+        longDictationInfoItem.isEnabled = false
         lastTranscriptItem.isEnabled = false
         copyLastTranscriptItem.isEnabled = false
         pasteLastTranscriptItem.isEnabled = false
         showLastErrorItem.isEnabled = false
         copyLastErrorItem.isEnabled = false
 
-        menu.addItem(toggleItem)
+        menu.addItem(longToggleItem)
         menu.addItem(statusLineItem)
+        menu.addItem(pushToTalkInfoItem)
+        menu.addItem(longDictationInfoItem)
         menu.addItem(NSMenuItem.separator())
 
         let lastTranscriptMenu = NSMenu()
@@ -78,17 +63,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         lastTranscriptMenu.addItem(pasteLastTranscriptItem)
         lastTranscriptItem.submenu = lastTranscriptMenu
         menu.addItem(lastTranscriptItem)
-
-        let permissionsMenu = NSMenu()
-        permissionsMenu.addItem(microphoneStatusItem)
-        permissionsMenu.addItem(speechStatusItem)
-        permissionsMenu.addItem(accessibilityStatusItem)
-        permissionsMenu.addItem(NSMenuItem.separator())
-        permissionsMenu.addItem(openMicrophoneSettingsItem)
-        permissionsMenu.addItem(openSpeechSettingsItem)
-        permissionsMenu.addItem(openAccessibilitySettingsItem)
-        permissionsItem.submenu = permissionsMenu
-        menu.addItem(permissionsItem)
 
         let diagnosticsMenu = NSMenu()
         diagnosticsMenu.addItem(openDiagnosticsItem)
@@ -103,7 +77,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(NSMenuItem.separator())
         menu.addItem(quitItem)
 
-        refreshPermissionStatus()
+        pushToTalkInfoItem.title = viewModel.pushToTalkLabel
+        longDictationInfoItem.title = viewModel.longDictationLabel
     }
 
     private func bindViewModel() {
@@ -111,11 +86,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             .receive(on: RunLoop.main)
             .sink { [weak self] state in
                 guard let self else { return }
-                self.toggleItem.title = self.viewModel.toggleTitle
+                self.longToggleItem.title = self.viewModel.longDictationToggleTitle
                 self.statusLineItem.title = "Status: \(self.viewModel.statusLine)"
+                self.pushToTalkInfoItem.title = self.viewModel.pushToTalkLabel
+                self.longDictationInfoItem.title = self.viewModel.longDictationLabel
                 self.statusItem.button?.image = self.icon(for: state)
                 self.statusItem.button?.toolTip = "Dicta — \(self.viewModel.statusLine)"
-                self.statusItem.button?.contentTintColor = self.tintColor(for: state)
             }
             .store(in: &cancellables)
 
@@ -139,14 +115,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
-        refreshPermissionStatus()
         statusLineItem.title = "Status: \(viewModel.statusLine)"
-    }
-
-    private func refreshPermissionStatus() {
-        microphoneStatusItem.title = viewModel.permissionStatusLabel(for: .microphone)
-        speechStatusItem.title = viewModel.permissionStatusLabel(for: .speech)
-        accessibilityStatusItem.title = viewModel.permissionStatusLabel(for: .accessibility)
+        pushToTalkInfoItem.title = viewModel.pushToTalkLabel
+        longDictationInfoItem.title = viewModel.longDictationLabel
     }
 
     private func icon(for state: DictationState) -> NSImage? {
@@ -170,21 +141,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         return image
     }
 
-    private func tintColor(for state: DictationState) -> NSColor? {
-        switch state {
-        case .recording:
-            return NSColor.systemRed
-        case .transcribing, .inserting, .stopping:
-            return NSColor.systemOrange
-        case .error:
-            return NSColor.systemRed
-        case .idle, .armed:
-            return nil
-        }
-    }
-
-    @objc private func toggleDictation() {
-        viewModel.toggleDictation()
+    @objc private func toggleLongDictation() {
+        viewModel.toggleLongDictation()
     }
 
     @objc private func copyLastTranscript() {
@@ -221,18 +179,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func copyDebugSummary() {
         viewModel.copyDebugSummary()
-    }
-
-    @objc private func openMicrophoneSettings() {
-        viewModel.openSystemSettings(for: .microphone)
-    }
-
-    @objc private func openSpeechSettings() {
-        viewModel.openSystemSettings(for: .speech)
-    }
-
-    @objc private func openAccessibilitySettings() {
-        viewModel.openSystemSettings(for: .accessibility)
     }
 
     @objc private func showSettings() {

@@ -3,6 +3,18 @@ import Combine
 import AppKit
 import AVFoundation
 
+enum DictationTrigger: String {
+    case pushToTalk
+    case longDictation
+
+    var displayName: String {
+        switch self {
+        case .pushToTalk: return "Push-to-Talk"
+        case .longDictation: return "Long Dictation"
+        }
+    }
+}
+
 @MainActor
 final class DictationController: ObservableObject {
     @Published private(set) var state: DictationState = .idle
@@ -16,41 +28,39 @@ final class DictationController: ObservableObject {
     private let audioRecorder: AudioRecorder
     private let transcriptionEngine: TranscriptionEngine
     private let localTranscriptionEngine: TranscriptionEngine
-    private let streamingEngine: TranscriptionEngine
     private let insertionManager: InsertionManager
-    private let hudController = HUDController()
+    private let hudController: PillHUDController
+
     private var sessionRecordingURL: URL?
     private var lastRecordingInfo: RecordingInfo?
     private var lastTranscriptionDuration: TimeInterval?
     private var lastTranscriptionErrorDetails: String = "none"
     private var lastInsertionMode: String = "none"
     private var lastInsertionResult: String = "none"
-    private var partialText: String = ""
     private var finalRawText: String = ""
     private var finalProcessedText: String = ""
-    private var partialTask: Task<Void, Never>?
-    private var partialsBlocked = false
     private var transcriptionTask: Task<Void, Never>?
     private var insertionTask: Task<Void, Never>?
     private var maxRecordingTask: Task<Void, Never>?
     private var startRecordingTask: Task<Void, Never>?
-    private var streamingFinalText: String?
-    private var streamingFailed: Bool = false
-    private var streamingFinalContinuation: CheckedContinuation<String?, Never>?
-    private var lastPartialHUDUpdate = Date.distantPast
-    private var lastPartialText: String = ""
-
-    private var shouldUseStreaming: Bool {
-        settings.streamingEnabled && settings.partialWindowSeconds > 0 && streamingEngine.supportsStreaming
-    }
     private var startRequestID: UUID?
     private let watchdogQueue = DispatchQueue(label: "com.dicta.watchdog", qos: .utility)
     private var watchdogTimer: DispatchSourceTimer?
     private var noFramesTask: Task<Void, Never>?
     private var stateEnteredAt = Date()
     private var isStopping = false
+    private var activeTrigger: DictationTrigger?
+    private var isPushToTalkHeld = false
+    private var hudSmoothedLevel: Double = 0
+    private var lastHUDRenderAt = Date.distantPast
+    private var lastHUDMode: PillHUDMode?
+    private var lastHUDQuantizedLevel = -1
 
     private var cancellables = Set<AnyCancellable>()
+
+    var currentTrigger: DictationTrigger? {
+        activeTrigger
+    }
 
     init(settings: SettingsModel, permissions: PermissionsManager, logger: DiagnosticsLogger) {
         self.settings = settings
@@ -59,12 +69,12 @@ final class DictationController: ObservableObject {
         self.audioRecorder = AudioRecorder(logger: logger)
         self.transcriptionEngine = AppleSpeechTranscriptionEngine(settings: settings, logger: logger)
         self.localTranscriptionEngine = LocalWhisperCppEngine(settings: settings, logger: logger)
-        self.streamingEngine = AppleSpeechStreamingEngine(settings: settings, logger: logger)
         self.insertionManager = InsertionManager(
             pasteboardInserter: PasteboardInserter(logger: logger),
             accessibilityInserter: AccessibilityTyperInserter(logger: logger),
             logger: logger
         )
+        self.hudController = PillHUDController(settings: settings)
 
         audioRecorder.onConfigurationChange = { [weak self] in
             Task { @MainActor in
@@ -88,8 +98,15 @@ final class DictationController: ObservableObject {
 
         settings.$showHUD
             .sink { [weak self] _ in
-                guard let self else { return }
-                self.updateHUD(for: self.state)
+                self?.renderHUD(force: true)
+            }
+            .store(in: &cancellables)
+
+        Publishers.Merge3(settings.$selectedThemeID.map { _ in () },
+                          settings.$customThemeEnabled.map { _ in () },
+                          settings.$customThemeHex.map { _ in () })
+            .sink { [weak self] _ in
+                self?.renderHUD(force: true)
             }
             .store(in: &cancellables)
 
@@ -97,18 +114,66 @@ final class DictationController: ObservableObject {
     }
 
     func toggleDictation() {
-        logger.log(.state, "Toggle requested in state \(state.displayName)")
+        toggleLongDictation()
+    }
+
+    func beginRecording(trigger: DictationTrigger) {
+        logger.log(.state, "Begin requested via \(trigger.displayName) in state \(state.displayName)")
         switch state {
         case .idle:
+            activeTrigger = trigger
+            if trigger == .pushToTalk {
+                isPushToTalkHeld = true
+            }
             startRecordingFlow()
-        case .armed:
-            cancelAndReset(reason: "Cancelled while arming")
         case .recording:
-            stopRecordingFlow(reason: "User stopped recording")
+            logger.log(.state, "Begin ignored while already recording via \(activeTrigger?.displayName ?? "unknown")")
+        case .armed:
+            if trigger == .pushToTalk {
+                isPushToTalkHeld = true
+            }
+        case .stopping, .transcribing, .inserting, .error:
+            logger.log(.state, "Begin ignored in state \(state.displayName)")
+        }
+    }
+
+    func endRecording(trigger: DictationTrigger) {
+        logger.log(.state, "End requested via \(trigger.displayName) in state \(state.displayName)")
+        if trigger == .pushToTalk {
+            isPushToTalkHeld = false
+        }
+        guard activeTrigger == trigger else {
+            logger.log(.state, "End ignored because active trigger is \(activeTrigger?.displayName ?? "none")")
+            return
+        }
+        switch state {
+        case .armed:
+            cancelAndReset(reason: "\(trigger.displayName) released before recording started")
+        case .recording:
+            stopRecordingFlow(reason: trigger == .pushToTalk ? "Push-to-Talk released" : "\(trigger.displayName) stopped")
+        case .idle, .stopping, .transcribing, .inserting, .error:
+            break
+        }
+    }
+
+    func toggleLongDictation() {
+        logger.log(.state, "Long dictation toggle requested in state \(state.displayName)")
+        switch state {
+        case .idle:
+            beginRecording(trigger: .longDictation)
+        case .recording where activeTrigger == .longDictation:
+            endRecording(trigger: .longDictation)
+        case .armed where activeTrigger == .longDictation:
+            cancelAndReset(reason: "Long Dictation cancelled while arming")
+        case .recording:
+            logger.log(.state, "Long Dictation ignored while \(activeTrigger?.displayName ?? "another trigger") is active")
         case .stopping, .transcribing, .inserting:
-            cancelAndReset(reason: "User cancelled")
+            logger.log(.state, "Long Dictation ignored while busy")
         case .error:
             transition(to: .idle, reason: "Reset after error")
+            renderHUD(force: true)
+        default:
+            break
         }
     }
 
@@ -126,17 +191,14 @@ final class DictationController: ObservableObject {
         lastTranscriptionErrorDetails = "none"
         lastInsertionMode = "none"
         lastInsertionResult = "none"
-        partialText = ""
         finalRawText = ""
         finalProcessedText = ""
         sessionRecordingURL = nil
-        partialsBlocked = false
-        partialTask?.cancel()
         startRecordingTask?.cancel()
         let requestID = UUID()
         startRequestID = requestID
         transition(to: .armed, reason: "Starting dictation")
-        updateHUD(for: .armed)
+        renderHUD(force: true)
         NSSound.beep()
 
         startRecordingTask = Task.detached { [weak self] in
@@ -182,10 +244,7 @@ final class DictationController: ObservableObject {
                 self.transition(to: .recording(startedAt: Date()), reason: "Recording started")
                 self.startMaxRecordingTimer()
                 self.startNoFramesCheck()
-                if self.shouldUseStreaming {
-                    self.startStreamingSession()
-                }
-                self.updateHUD(for: self.state)
+                self.renderHUD(force: true)
             }
         } catch {
             await MainActor.run {
@@ -212,26 +271,22 @@ final class DictationController: ObservableObject {
             logger.log(.state, "Stop recording ignored (already stopping)")
             return
         }
+
         isStopping = true
         maxRecordingTask?.cancel()
         noFramesTask?.cancel()
-        partialsBlocked = true
-        partialTask?.cancel()
-        if shouldUseStreaming {
-            let fileName = sessionRecordingURL?.lastPathComponent ?? "n/a"
-            let windowSeconds = settings.partialWindowSeconds
-            let windowText = String(format: "%.2f", windowSeconds)
-            logger.log(.transcription, "Partial transcribe finish (windowSeconds=\(windowText), file=\(fileName))")
-        }
         logger.log(.audio, "Stop recording requested: \(reason)")
         transition(to: .stopping, reason: reason)
-        updateHUD(for: .stopping)
+        if activeTrigger == .pushToTalk {
+            isPushToTalkHeld = false
+        }
+        activeTrigger = nil
+        renderHUD(force: true)
         NSSound.beep()
 
         let languageIdentifier = settings.languageIdentifier
         let preferOnDevice = settings.preferOnDevice
         let transcriptionTimeout = settings.transcriptionTimeoutSeconds > 0 ? settings.transcriptionTimeoutSeconds : 20.0
-        let useStreaming = shouldUseStreaming && streamingEngine.supportsStreaming
 
         transcriptionTask?.cancel()
         transcriptionTask = Task.detached { [weak self] in
@@ -242,17 +297,16 @@ final class DictationController: ObservableObject {
                 }
             }
             do {
-                if useStreaming {
-                    await self.streamingEngine.stopStreaming()
-                }
                 let recordingInfo = try await self.audioRecorder.stopRecording()
                 DiagnosticsManager.shared.addRecentAudio(recordingInfo.url)
-                self.logger.log(.audio, "Stop recording finished (file: \(recordingInfo.url.lastPathComponent), duration: \(String(format: "%.2f", recordingInfo.duration))s, bytes: \(recordingInfo.fileSizeBytes), frames: \(recordingInfo.stats.framesReceived))")
+                await MainActor.run {
+                    self.logger.log(.audio, "Stop recording finished (file: \(recordingInfo.url.lastPathComponent), duration: \(String(format: "%.2f", recordingInfo.duration))s, bytes: \(recordingInfo.fileSizeBytes), frames: \(recordingInfo.stats.framesReceived))")
+                }
                 await MainActor.run {
                     self.sessionRecordingURL = recordingInfo.url
                     self.lastRecordingInfo = recordingInfo
                     self.transition(to: .transcribing, reason: "Recording stopped")
-                    self.updateHUD(for: .transcribing)
+                    self.renderHUD(force: true)
                 }
                 if recordingInfo.stats.framesReceived == 0 || recordingInfo.fileSizeBytes == 0 {
                     await MainActor.run {
@@ -261,7 +315,9 @@ final class DictationController: ObservableObject {
                     return
                 }
                 let durationText = String(format: "%.2f", recordingInfo.duration)
-                self.logger.log(.transcription, "Final transcribe start (full file=\(recordingInfo.url.lastPathComponent), duration=\(durationText)s)")
+                await MainActor.run {
+                    self.logger.log(.transcription, "Final transcribe start (full file=\(recordingInfo.url.lastPathComponent), duration=\(durationText)s)")
+                }
                 await self.performTranscription(url: recordingInfo.url,
                                                 languageIdentifier: languageIdentifier,
                                                 preferOnDevice: preferOnDevice,
@@ -341,17 +397,19 @@ final class DictationController: ObservableObject {
         let processedText = TextPostProcessor.process(rawText, settings: settings)
         finalProcessedText = processedText
         logger.log(.transcription, "Transcript (post): \(processedText)", verbose: true)
-        guard !processedText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty else {
+
+        guard !processedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             lastTranscriptionErrorDetails = "No speech detected"
             lastInsertionMode = settings.insertionMode.rawValue
             lastInsertionResult = "skipped: no speech detected"
             fail("No speech detected")
             return
         }
+
         logger.log(.transcription, "Final chosen for paste (chars: \(processedText.count))")
         lastTranscript = processedText
         transition(to: .inserting, reason: "Transcription complete")
-        updateHUD(for: .inserting)
+        renderHUD(force: true)
 
         let insertionMode = settings.insertionMode
         let restoreClipboard = settings.restoreClipboard
@@ -363,7 +421,9 @@ final class DictationController: ObservableObject {
         insertionTask = Task.detached { [weak self] in
             guard let self else { return }
             do {
-                self.logger.log(.insertion, "Insertion started (mode: \(insertionMode.rawValue), chars: \(processedText.count))")
+                await MainActor.run {
+                    self.logger.log(.insertion, "Insertion started (mode: \(insertionMode.rawValue), chars: \(processedText.count))")
+                }
                 let result = try await self.withTimeout(seconds: insertionTimeout, timeoutError: InsertionError.timeout) {
                     await self.insertionManager.insert(text: processedText,
                                                        mode: insertionMode,
@@ -376,24 +436,26 @@ final class DictationController: ObservableObject {
                     await MainActor.run {
                         self.lastInsertionResult = "pasted"
                         self.transition(to: .idle, reason: "Insertion complete")
-                        self.updateHUD(for: .idle)
+                        self.renderHUD(force: true)
                     }
                 case .attempted:
                     await MainActor.run {
                         self.lastInsertionResult = "attempted"
                         self.transition(to: .idle, reason: "Insertion complete (attempted)")
-                        self.updateHUD(for: .idle)
+                        self.renderHUD(force: true)
                     }
                 case .clipboardOnly:
                     await MainActor.run {
                         self.lastInsertionResult = "clipboard-only"
                         self.transition(to: .idle, reason: "Insertion complete (clipboard only)")
-                        self.updateHUD(for: .idle)
+                        self.renderHUD(force: true)
                     }
                 }
             } catch {
                 if Task.isCancelled {
-                    self.logger.log(.insertion, "Insertion cancelled")
+                    await MainActor.run {
+                        self.logger.log(.insertion, "Insertion cancelled")
+                    }
                     return
                 }
                 let details = Self.detailedErrorDescription(error)
@@ -403,7 +465,9 @@ final class DictationController: ObservableObject {
                     self.fail(message)
                     NotificationPresenter.shared.notify(title: "Dicta Insert Failed", body: message)
                 }
-                self.logger.log(.insertion, "Insertion failed: \(details)")
+                await MainActor.run {
+                    self.logger.log(.insertion, "Insertion failed: \(details)")
+                }
             }
         }
     }
@@ -415,125 +479,40 @@ final class DictationController: ObservableObject {
         startRequestID = nil
         transcriptionTask?.cancel()
         insertionTask?.cancel()
-        partialTask?.cancel()
-        partialsBlocked = true
         maxRecordingTask?.cancel()
         noFramesTask?.cancel()
+        activeTrigger = nil
+        isPushToTalkHeld = false
         audioRecorder.cancelRecording()
-        streamingEngine.cancelStreaming()
         sessionRecordingURL = nil
-        transition(to: .idle, reason: "Cancelled")
-        updateHUD(for: .idle)
+        transition(to: .idle, reason: reason)
+        renderHUD(force: true)
     }
 
     private func transition(to newState: DictationState, reason: String) {
         logger.log(.state, "State \(state.displayName) → \(newState.displayName) (\(reason))")
         state = newState
         stateEnteredAt = Date()
+        if case .idle = newState {
+            activeTrigger = nil
+            isPushToTalkHeld = false
+            hudSmoothedLevel = 0
+        }
+        if case .error = newState {
+            activeTrigger = nil
+            isPushToTalkHeld = false
+        }
     }
 
     private func fail(_ message: String) {
         lastError = message
         transition(to: .error(message), reason: message)
-        updateHUD(for: .error(message))
+        renderHUD(force: true)
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_200_000_000)
             if case .error = self.state {
                 self.transition(to: .idle, reason: "Auto reset after error")
-                self.updateHUD(for: .idle)
-            }
-        }
-    }
-
-    private func startStreamingSession() {
-        let windowSeconds = settings.partialWindowSeconds
-        if windowSeconds <= 0 {
-            partialsBlocked = true
-            logger.log(.transcription, "partials disabled: invalid windowSeconds")
-            return
-        }
-        streamingFailed = false
-        streamingFinalText = nil
-        streamingFinalContinuation = nil
-        lastPartialText = ""
-        lastPartialHUDUpdate = Date.distantPast
-        let fileName = sessionRecordingURL?.lastPathComponent ?? "n/a"
-        let windowText = String(format: "%.2f", windowSeconds)
-        logger.log(.transcription, "Partial transcribe start (windowSeconds=\(windowText), file=\(fileName))")
-
-        let locale = Locale(identifier: settings.languageIdentifier)
-        let contextualStrings = PhraseMapStore.contextualStrings(settings: settings)
-        do {
-            try streamingEngine.startStreaming(locale: locale,
-                                               contextualStrings: contextualStrings,
-                                               preferOnDevice: settings.preferOnDevice,
-                                               partialHandler: { [weak self] text in
-                                                   Task { @MainActor in
-                                                       self?.handleStreamingPartial(text)
-                                                   }
-                                               },
-                                               finalHandler: { [weak self] text in
-                                                   Task { @MainActor in
-                                                       self?.handleStreamingFinal(text)
-                                                   }
-                                               },
-                                               errorHandler: { [weak self] error in
-                                                   Task { @MainActor in
-                                                       self?.handleStreamingError(error)
-                                                   }
-                                               })
-            logger.log(.transcription, "Streaming started")
-            audioRecorder.onAudioBuffer = { [weak self] buffer in
-                self?.streamingEngine.feedAudio(buffer: buffer)
-            }
-        } catch {
-            streamingFailed = true
-            logger.log(.transcription, "Streaming start failed: \(error.localizedDescription)")
-        }
-    }
-
-    private func handleStreamingPartial(_ text: String) {
-        guard case .recording = state, !partialsBlocked else { return }
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        let now = Date()
-        let interval = max(0.1, settings.partialIntervalSeconds)
-        if now.timeIntervalSince(lastPartialHUDUpdate) < interval, trimmed == lastPartialText {
-            return
-        }
-        lastPartialHUDUpdate = now
-        lastPartialText = trimmed
-        partialTask?.cancel()
-        partialTask = Task { @MainActor in
-            guard !Task.isCancelled, case .recording = self.state, !self.partialsBlocked else { return }
-            self.partialText = trimmed
-            self.logger.log(.transcription, "Streaming partial (length: \(trimmed.count))", verbose: true)
-            self.hudController.show(text: trimmed, mode: .listening)
-        }
-    }
-
-    private func handleStreamingFinal(_ text: String) {
-        streamingFinalText = text
-        streamingFinalContinuation?.resume(returning: text)
-        streamingFinalContinuation = nil
-    }
-
-    private func handleStreamingError(_ error: Error) {
-        streamingFailed = true
-        let details = Self.detailedErrorDescription(error)
-        logger.log(.transcription, "Streaming error: \(details)")
-    }
-
-    private func waitForStreamingFinal(timeout: Double) async -> String? {
-        if let streamingFinalText { return streamingFinalText }
-        return await withCheckedContinuation { continuation in
-            streamingFinalContinuation = continuation
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
-                if self.streamingFinalContinuation != nil {
-                    self.streamingFinalContinuation?.resume(returning: nil)
-                    self.streamingFinalContinuation = nil
-                }
+                self.renderHUD(force: true)
             }
         }
     }
@@ -593,12 +572,7 @@ final class DictationController: ObservableObject {
                 return
             }
             let stats = audioRecorder.currentStats()
-            if settings.showHUD && settings.verboseLogging {
-                let rmsText = String(format: "%.4f", stats.currentRMS)
-                let peakText = String(format: "%.4f", stats.peakRMS)
-                let thresholdText = String(format: "%.4f", settings.vadThresholdRMS)
-                hudController.show(text: "Listening… RMS \(rmsText) • Peak \(peakText) • Th \(thresholdText)", mode: .listening)
-            }
+            renderHUD(force: false)
             let grace = settings.vadGraceSeconds
             if Date().timeIntervalSince(startedAt) < grace { return }
             let lastNonSilentAt = stats.lastNonSilentAt ?? startedAt
@@ -616,16 +590,20 @@ final class DictationController: ObservableObject {
                 return
             }
         }
+
+        if state == .transcribing || state == .stopping || state == .inserting {
+            renderHUD(force: false)
+        }
+
         if state == .transcribing {
             let maxAllowed = settings.transcriptionTimeoutSeconds + 5
             if stateDuration() > maxAllowed {
                 fail("Watchdog: transcription timeout")
             }
         }
-        if state == .stopping {
-            if stateDuration() > 5 {
-                fail("Watchdog: stop timeout")
-            }
+
+        if state == .stopping, stateDuration() > 5 {
+            fail("Watchdog: stop timeout")
         }
     }
 
@@ -636,33 +614,66 @@ final class DictationController: ObservableObject {
         return Date().timeIntervalSince(stateEnteredAt)
     }
 
-    private func updateHUD(for state: DictationState) {
+    private func renderHUD(force: Bool) {
         guard settings.showHUD else {
             hudController.hide()
+            lastHUDMode = nil
+            lastHUDQuantizedLevel = -1
             return
         }
+
+        let mode: PillHUDMode
         switch state {
-        case .recording:
-            hudController.show(text: "Listening…", mode: .listening)
-        case .stopping:
-            hudController.show(text: "Stopping…", mode: .processing)
-        case .transcribing:
-            hudController.show(text: "Transcribing…", mode: .processing)
-        case .inserting:
-            hudController.show(text: "Inserting…", mode: .processing)
-        case .armed:
-            hudController.show(text: "Dicta Ready", mode: .neutral)
         case .idle:
             hudController.hide()
+            lastHUDMode = nil
+            lastHUDQuantizedLevel = -1
+            return
+        case .armed, .recording:
+            mode = .listening
+        case .stopping, .transcribing, .inserting:
+            mode = .transcribing
         case .error:
-            hudController.show(text: "Error", mode: .error)
+            mode = .error
         }
+
+        let targetLevel: Double
+        switch state {
+        case .recording:
+            let stats = audioRecorder.currentStats()
+            let normalized = min(max(stats.currentRMS / max(settings.vadThresholdRMS * 4.0, 0.05), 0.0), 1.0)
+            hudSmoothedLevel = (hudSmoothedLevel * 0.8) + (normalized * 0.2)
+            targetLevel = hudSmoothedLevel
+        case .armed:
+            hudSmoothedLevel = 0.18
+            targetLevel = hudSmoothedLevel
+        case .stopping, .transcribing, .inserting:
+            hudSmoothedLevel = max(hudSmoothedLevel * 0.85, 0.2)
+            targetLevel = max(hudSmoothedLevel, 0.2)
+        case .error:
+            hudSmoothedLevel = 0.1
+            targetLevel = 0.1
+        case .idle:
+            targetLevel = 0
+        }
+
+        let quantized = Int((targetLevel * 12).rounded())
+        let now = Date()
+        if !force,
+           now.timeIntervalSince(lastHUDRenderAt) < 0.1,
+           lastHUDMode == mode,
+           lastHUDQuantizedLevel == quantized {
+            return
+        }
+
+        lastHUDRenderAt = now
+        lastHUDMode = mode
+        lastHUDQuantizedLevel = quantized
+        hudController.show(mode: mode, waveformLevel: targetLevel, theme: settings.effectiveTheme)
     }
 
     func debugSummary() -> String {
         let permissionsSummary = "Mic: \(permissions.microphoneStatus().rawValue), Speech: \(permissions.speechStatus().rawValue), Accessibility: \(permissions.accessibilityStatus().rawValue)"
-        let hotkeySummary = settings.hotkey.displayString
-        let stateSummary = state.displayName
         let deviceName = AVCaptureDevice.default(for: .audio)?.localizedName ?? "Unknown"
         let stats = lastRecordingInfo?.stats ?? audioRecorder.currentStats()
         let fileSize = lastRecordingInfo?.fileSizeBytes ?? 0
@@ -675,12 +686,15 @@ final class DictationController: ObservableObject {
 
         return """
         Dicta Version: \(version) (\(build))
-        State: \(stateSummary)
-        Hotkey: \(hotkeySummary)
+        State: \(state.displayName)
+        Active Trigger: \(activeTrigger?.displayName ?? "none")
+        Push-to-Talk: \(settings.pushToTalkKeybind.displayString)
+        Long Dictation: \(settings.longDictationKeybind.displayString)
         Language Identifier: \(settings.languageIdentifier)
         Smart Punctuation: \(settings.smartPunctuationEnabled)
         Phrase Map Enabled: \(settings.phraseMapEnabled)
         Phrase Map Entries: \(phraseMapCount)
+        Theme: \(settings.effectiveTheme.name)
         Insertion Mode: \(settings.insertionMode.rawValue)
         Permissions: \(permissionsSummary)
         Audio Device: \(deviceName)

@@ -1,40 +1,84 @@
 import Foundation
-import Carbon.HIToolbox
 
+@MainActor
 final class HotkeyManager {
-    var onHotkey: (() -> Void)?
+    var onBeginPushToTalk: (() -> Void)?
+    var onEndPushToTalk: (() -> Void)?
+    var onToggleLongDictation: (() -> Void)?
+    var onInputMonitoringRequired: (() -> Void)?
 
-    private var hotkeyRef: EventHotKeyRef?
-    private var handler: EventHandlerRef?
-    private var currentHotkey: Hotkey?
+    private let eventTapEngine = EventTapHotkeyEngine()
+    private let carbonEngine = CarbonHotkeyEngine()
+    private var pttBinding: Keybind?
+    private var longBinding: Keybind?
+    private var usingEventTap = false
+    private var usingCarbonFallback = false
 
-    func register(hotkey: Hotkey) {
-        unregister()
-        currentHotkey = hotkey
-
-        let hotKeyID = EventHotKeyID(signature: OSType(0x44544341), id: 1) // 'DTCA'
-        let target = GetEventDispatcherTarget()
-
-        let status = RegisterEventHotKey(hotkey.keyCode, hotkey.modifiers, hotKeyID, target, 0, &hotkeyRef)
-        if status != noErr {
-            return
+    init() {
+        eventTapEngine.onEvent = { [weak self] event in
+            self?.handle(event: event)
         }
+        carbonEngine.onEvent = { [weak self] event in
+            self?.handle(event: event)
+        }
+    }
 
-        if handler == nil {
-            var eventSpec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-            InstallEventHandler(target, { _, _, userData in
-                guard let userData else { return noErr }
-                let manager = Unmanaged<HotkeyManager>.fromOpaque(userData).takeUnretainedValue()
-                manager.onHotkey?()
-                return noErr
-            }, 1, &eventSpec, UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()), &handler)
+    var currentConfigurationSummary: String {
+        let ptt = pttBinding?.displayString ?? "unset"
+        let long = longBinding?.displayString ?? "unset"
+        let engines = [usingEventTap ? "eventTap" : nil, usingCarbonFallback ? "carbon" : nil]
+            .compactMap { $0 }
+            .joined(separator: ",")
+        return "PTT=\(ptt), Long=\(long), engines=\(engines.isEmpty ? "none" : engines)"
+    }
+
+    func register(ptt: Keybind, long: Keybind) {
+        unregister()
+        pttBinding = ptt
+        longBinding = long
+
+        do {
+            try eventTapEngine.start(bindings: [
+                ManagedBinding(action: .pushToTalk, binding: ptt),
+                ManagedBinding(action: .longDictation, binding: long)
+            ])
+            usingEventTap = true
+        } catch {
+            usingEventTap = false
+            onInputMonitoringRequired?()
+            if long.supportsCarbonHotkey {
+                do {
+                    try carbonEngine.start(bindings: [ManagedBinding(action: .longDictation, binding: long)])
+                    usingCarbonFallback = true
+                } catch {
+                    usingCarbonFallback = false
+                }
+            }
         }
     }
 
     func unregister() {
-        if let hotkeyRef {
-            UnregisterEventHotKey(hotkeyRef)
-            self.hotkeyRef = nil
+        eventTapEngine.stop()
+        carbonEngine.stop()
+        usingEventTap = false
+        usingCarbonFallback = false
+    }
+
+    func reloadIfNeeded() {
+        guard let pttBinding, let longBinding else { return }
+        register(ptt: pttBinding, long: longBinding)
+    }
+
+    private func handle(event: HotkeyEvent) {
+        switch (event.action, event.phase) {
+        case (.pushToTalk, .down):
+            onBeginPushToTalk?()
+        case (.pushToTalk, .up):
+            onEndPushToTalk?()
+        case (.longDictation, .down):
+            onToggleLongDictation?()
+        case (.longDictation, .up):
+            break
         }
     }
 }

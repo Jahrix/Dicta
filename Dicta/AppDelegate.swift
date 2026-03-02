@@ -35,7 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        setupHotkey()
+        setupHotkeys()
         statusItemController = StatusItemController(viewModel: menuViewModel)
 
         if !settingsModel.hasCompletedOnboarding {
@@ -47,26 +47,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false
     }
 
-    private func setupHotkey() {
-        hotkeyManager.onHotkey = { [weak self] in
-            Task { @MainActor in
-                if let hotkey = self?.settingsModel.hotkey {
-                    self?.diagnosticsLogger.log(.hotkey, "Hotkey pressed (keyCode: \(hotkey.keyCode), modifiers: \(hotkey.modifiers))")
-                } else {
-                    self?.diagnosticsLogger.log(.hotkey, "Hotkey pressed")
-                }
-                self?.dictationController.toggleDictation()
-            }
+    private func setupHotkeys() {
+        hotkeyManager.onBeginPushToTalk = { [weak self] in
+            guard let self else { return }
+            self.diagnosticsLogger.log(.hotkey, "PTT down (\(self.settingsModel.pushToTalkKeybind.displayString))")
+            self.dictationController.beginRecording(trigger: .pushToTalk)
+        }
+        hotkeyManager.onEndPushToTalk = { [weak self] in
+            guard let self else { return }
+            self.diagnosticsLogger.log(.hotkey, "PTT up (\(self.settingsModel.pushToTalkKeybind.displayString))")
+            self.dictationController.endRecording(trigger: .pushToTalk)
+        }
+        hotkeyManager.onToggleLongDictation = { [weak self] in
+            guard let self else { return }
+            self.diagnosticsLogger.log(.hotkey, "Long dictation toggle (\(self.settingsModel.longDictationKeybind.displayString))")
+            self.dictationController.toggleLongDictation()
+        }
+        hotkeyManager.onInputMonitoringRequired = { [weak self] in
+            self?.showInputMonitoringHintIfNeeded()
         }
 
-        settingsModel.$hotkey
-            .sink { [weak self] hotkey in
-                self?.hotkeyManager.register(hotkey: hotkey)
-                self?.diagnosticsLogger.log(.hotkey, "Registered hotkey \(hotkey.displayString)")
+        Publishers.CombineLatest(settingsModel.$pushToTalkKeybind, settingsModel.$longDictationKeybind)
+            .sink { [weak self] ptt, long in
+                guard let self else { return }
+                self.hotkeyManager.register(ptt: ptt, long: long)
+                self.diagnosticsLogger.log(.hotkey, "Registered keybinds: \(self.hotkeyManager.currentConfigurationSummary)")
             }
             .store(in: &cancellables)
 
-        hotkeyManager.register(hotkey: settingsModel.hotkey)
+        hotkeyManager.register(ptt: settingsModel.pushToTalkKeybind, long: settingsModel.longDictationKeybind)
+    }
+
+    private func showInputMonitoringHintIfNeeded() {
+        guard !settingsModel.hasShownInputMonitoringHint else { return }
+        settingsModel.hasShownInputMonitoringHint = true
+        let alert = NSAlert()
+        alert.messageText = "Input Monitoring Required"
+        alert.informativeText = "Push-to-Talk and standalone modifier keybinds need Input Monitoring on macOS. Long Dictation combo fallback will keep working where possible."
+        alert.addButton(withTitle: "Open Settings")
+        alert.addButton(withTitle: "Later")
+        if alert.runModal() == .alertFirstButtonReturn,
+           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private func openSettingsWindow() {
@@ -74,8 +97,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let view = SettingsView(model: settingsModel,
                                     permissions: permissionsManager,
                                     logger: diagnosticsLogger)
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 520),
-                                  styleMask: [.titled, .closable, .miniaturizable],
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 620, height: 760),
+                                  styleMask: [.titled, .closable, .miniaturizable, .resizable],
                                   backing: .buffered,
                                   defer: false)
             window.title = "Dicta Settings"
@@ -125,4 +148,3 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 }
-

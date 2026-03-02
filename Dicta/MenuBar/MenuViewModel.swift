@@ -52,15 +52,23 @@ final class MenuViewModel: ObservableObject {
             .assign(to: &$lastError)
     }
 
-    var toggleTitle: String {
-        let hotkeyLabel = settings.hotkey.displayString
-        let shortcut = hotkeyLabel.isEmpty ? "" : " (\(hotkeyLabel))"
+    var longDictationToggleTitle: String {
         switch state {
-        case .idle, .armed: return "Start Dictation\(shortcut)"
-        case .recording: return "Stop Dictation\(shortcut)"
-        case .stopping, .transcribing, .inserting: return "Cancel Dictation"
-        case .error: return "Reset Dictation"
+        case .recording where controller.currentTrigger == .longDictation:
+            return "Stop Long Dictation"
+        case .armed where controller.currentTrigger == .longDictation:
+            return "Stop Long Dictation"
+        default:
+            return "Start Long Dictation"
         }
+    }
+
+    var pushToTalkLabel: String {
+        "Push-to-Talk: \(settings.pushToTalkKeybind.displayString)"
+    }
+
+    var longDictationLabel: String {
+        "Long Dictation: \(settings.longDictationKeybind.displayString)"
     }
 
     var statusLine: String {
@@ -79,21 +87,17 @@ final class MenuViewModel: ObservableObject {
     }
 
     func permissionStatusLabel(for kind: PermissionKind) -> String {
-        let status = permissionStatus(for: kind)
         let statusText: String
-        switch status {
-        case .granted:
-            statusText = "Granted"
-        case .denied:
-            statusText = "Not granted"
-        case .notDetermined:
-            statusText = "Not requested"
+        switch permissionStatus(for: kind) {
+        case .granted: statusText = "Granted"
+        case .denied: statusText = "Not granted"
+        case .notDetermined: statusText = "Not requested"
         }
         return "\(kind.displayName): \(statusText)"
     }
 
-    func toggleDictation() {
-        controller.toggleDictation()
+    func toggleLongDictation() {
+        controller.toggleLongDictation()
     }
 
     func copyLastTranscript() {
@@ -128,8 +132,5 @@ final class MenuViewModel: ObservableObject {
     func showDiagnostics() { showDiagnosticsAction() }
     func showPermissions() { showPermissionsAction() }
     func quit() { quitAction() }
-
-    func openSystemSettings(for kind: PermissionKind) {
-        permissions.openSystemSettings(for: kind)
-    }
+    func openSystemSettings(for kind: PermissionKind) { permissions.openSystemSettings(for: kind) }
 }

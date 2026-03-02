@@ -15,6 +15,12 @@
 		E10505050505050505050505 /* StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10505050505050505050505 /* StatusItemController.swift */; };
 		E10606060606060606060606 /* Hotkey.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10606060606060606060606 /* Hotkey.swift */; };
 		E10707070707070707070707 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10707070707070707070707 /* HotkeyManager.swift */; };
+		F20100000000000000000001 /* Keybind.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000001 /* Keybind.swift */; };
+		F20100000000000000000002 /* HotkeyEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000002 /* HotkeyEngine.swift */; };
+		F20100000000000000000003 /* CarbonHotkeyEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000003 /* CarbonHotkeyEngine.swift */; };
+		F20100000000000000000004 /* EventTapHotkeyEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000004 /* EventTapHotkeyEngine.swift */; };
+		F20100000000000000000005 /* KeybindRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000005 /* KeybindRecorder.swift */; };
+		F20100000000000000000006 /* KeybindRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000006 /* KeybindRecorderView.swift */; };
 		E10808080808080808080808 /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10808080808080808080808 /* AudioRecorder.swift */; };
 		E10909090909090909090909 /* AudioSessionGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10909090909090909090909 /* AudioSessionGuard.swift */; };
 		E10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift */; };
@@ -41,6 +47,12 @@
 		E11717171717171717171717 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11717171717171717171717 /* OnboardingView.swift */; };
 		E11818181818181818181818 /* DictationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11818181818181818181818 /* DictationState.swift */; };
 		E11919191919191919191919 /* HUDController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11919191919191919191919 /* HUDController.swift */; };
+		F20100000000000000000007 /* PillHUDController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000007 /* PillHUDController.swift */; };
+		F20100000000000000000008 /* PillHUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000008 /* PillHUDView.swift */; };
+		F20100000000000000000009 /* WaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000009 /* WaveformView.swift */; };
+		F2010000000000000000000A /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3010000000000000000000A /* Theme.swift */; };
+		F2010000000000000000000B /* RoyalThemes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3010000000000000000000B /* RoyalThemes.swift */; };
+		F2010000000000000000000C /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3010000000000000000000C /* ThemeManager.swift */; };
 		E12020202020202020202020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D12020202020202020202020 /* Assets.xcassets */; };
 		E13030303030303030303030 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D13030303030303030303030 /* NotificationPresenter.swift */; };
 /* End PBXBuildFile section */
@@ -54,6 +66,12 @@
 		D10505050505050505050505 /* StatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemController.swift; sourceTree = "<group>"; };
 		D10606060606060606060606 /* Hotkey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hotkey.swift; sourceTree = "<group>"; };
 		D10707070707070707070707 /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
+		F30100000000000000000001 /* Keybind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keybind.swift; sourceTree = "<group>"; };
+		F30100000000000000000002 /* HotkeyEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyEngine.swift; sourceTree = "<group>"; };
+		F30100000000000000000003 /* CarbonHotkeyEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarbonHotkeyEngine.swift; sourceTree = "<group>"; };
+		F30100000000000000000004 /* EventTapHotkeyEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventTapHotkeyEngine.swift; sourceTree = "<group>"; };
+		F30100000000000000000005 /* KeybindRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeybindRecorder.swift; sourceTree = "<group>"; };
+		F30100000000000000000006 /* KeybindRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeybindRecorderView.swift; sourceTree = "<group>"; };
 		D10808080808080808080808 /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
 		D10909090909090909090909 /* AudioSessionGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionGuard.swift; sourceTree = "<group>"; };
 		D10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionEngine.swift; sourceTree = "<group>"; };
@@ -80,6 +98,12 @@
 		D11717171717171717171717 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		D11818181818181818181818 /* DictationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationState.swift; sourceTree = "<group>"; };
 		D11919191919191919191919 /* HUDController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDController.swift; sourceTree = "<group>"; };
+		F30100000000000000000007 /* PillHUDController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PillHUDController.swift; sourceTree = "<group>"; };
+		F30100000000000000000008 /* PillHUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PillHUDView.swift; sourceTree = "<group>"; };
+		F30100000000000000000009 /* WaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformView.swift; sourceTree = "<group>"; };
+		F3010000000000000000000A /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		F3010000000000000000000B /* RoyalThemes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoyalThemes.swift; sourceTree = "<group>"; };
+		F3010000000000000000000C /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
 		D12020202020202020202020 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D12121212121212121212121 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		D12222222222222222222222 /* Dicta.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = Dicta.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -119,6 +143,7 @@
 				B7B7B7B7B7B7B7B7B7B7B7B7 /* Settings */,
 				B8B8B8B8B8B8B8B8B8B8B8B8 /* Diagnostics */,
 				B9B9B9B9B9B9B9B9B9B9B9B9 /* Permissions */,
+				F40100000000000000000001 /* Themes */,
 				C0C0C0C0C0C0C0C0C0C0C0C0 /* Utilities */,
 				C1C1C1C1C1C1C1C1C1C1C1C1 /* Resources */,
 			);
@@ -138,7 +163,13 @@
 			isa = PBXGroup;
 			children = (
 				D10606060606060606060606 /* Hotkey.swift */,
+				F30100000000000000000001 /* Keybind.swift */,
+				F30100000000000000000002 /* HotkeyEngine.swift */,
+				F30100000000000000000003 /* CarbonHotkeyEngine.swift */,
+				F30100000000000000000004 /* EventTapHotkeyEngine.swift */,
 				D10707070707070707070707 /* HotkeyManager.swift */,
+				F30100000000000000000005 /* KeybindRecorder.swift */,
+				F30100000000000000000006 /* KeybindRecorderView.swift */,
 			);
 			path = Hotkey;
 			sourceTree = "<group>";
@@ -209,11 +240,24 @@
 			path = Permissions;
 			sourceTree = "<group>";
 		};
+		F40100000000000000000001 /* Themes */ = {
+			isa = PBXGroup;
+			children = (
+				F3010000000000000000000A /* Theme.swift */,
+				F3010000000000000000000B /* RoyalThemes.swift */,
+				F3010000000000000000000C /* ThemeManager.swift */,
+			);
+			path = Themes;
+			sourceTree = "<group>";
+		};
 		C0C0C0C0C0C0C0C0C0C0C0C0 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
 				D11818181818181818181818 /* DictationState.swift */,
 				D11919191919191919191919 /* HUDController.swift */,
+				F30100000000000000000007 /* PillHUDController.swift */,
+				F30100000000000000000008 /* PillHUDView.swift */,
+				F30100000000000000000009 /* WaveformView.swift */,
 				3E7BF4B0A64048CFA10EA9B0 /* FrontmostApp.swift */,
 				D13030303030303030303030 /* NotificationPresenter.swift */,
 			);
@@ -311,7 +355,13 @@
 				E10404040404040404040404 /* MenuViewModel.swift in Sources */,
 				E10505050505050505050505 /* StatusItemController.swift in Sources */,
 				E10606060606060606060606 /* Hotkey.swift in Sources */,
+				F20100000000000000000001 /* Keybind.swift in Sources */,
+				F20100000000000000000002 /* HotkeyEngine.swift in Sources */,
+				F20100000000000000000003 /* CarbonHotkeyEngine.swift in Sources */,
+				F20100000000000000000004 /* EventTapHotkeyEngine.swift in Sources */,
 				E10707070707070707070707 /* HotkeyManager.swift in Sources */,
+				F20100000000000000000005 /* KeybindRecorder.swift in Sources */,
+				F20100000000000000000006 /* KeybindRecorderView.swift in Sources */,
 				E10808080808080808080808 /* AudioRecorder.swift in Sources */,
 				E10909090909090909090909 /* AudioSessionGuard.swift in Sources */,
 				E10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift in Sources */,
@@ -338,6 +388,12 @@
 				E11717171717171717171717 /* OnboardingView.swift in Sources */,
 				E11818181818181818181818 /* DictationState.swift in Sources */,
 				E11919191919191919191919 /* HUDController.swift in Sources */,
+				F20100000000000000000007 /* PillHUDController.swift in Sources */,
+				F20100000000000000000008 /* PillHUDView.swift in Sources */,
+				F20100000000000000000009 /* WaveformView.swift in Sources */,
+				F2010000000000000000000A /* Theme.swift in Sources */,
+				F2010000000000000000000B /* RoyalThemes.swift in Sources */,
+				F2010000000000000000000C /* ThemeManager.swift in Sources */,
 				3901825C976A48309ECE609C /* FrontmostApp.swift in Sources */,
 				E13030303030303030303030 /* NotificationPresenter.swift in Sources */,
 			);

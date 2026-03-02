@@ -1,10 +1,13 @@
 import Foundation
 import Combine
 import Speech
+import SwiftUI
+import Carbon.HIToolbox
 
 @MainActor
 final class SettingsModel: ObservableObject {
-    @Published var hotkey: Hotkey { didSet { saveHotkey() } }
+    @Published var pushToTalkKeybind: Keybind { didSet { saveKeybind(pushToTalkKeybind, key: Keys.pushToTalkKeybindData) } }
+    @Published var longDictationKeybind: Keybind { didSet { saveKeybind(longDictationKeybind, key: Keys.longDictationKeybindData) } }
     @Published var insertionMode: InsertionMode { didSet { defaults.set(insertionMode.rawValue, forKey: Keys.insertionMode) } }
     @Published var languageIdentifier: String { didSet { defaults.set(languageIdentifier, forKey: Keys.languageIdentifier) } }
     @Published var transcriptionBackend: String { didSet { defaults.set(transcriptionBackend, forKey: Keys.transcriptionBackend) } }
@@ -16,15 +19,9 @@ final class SettingsModel: ObservableObject {
             guard oldPreset != newPreset else { return }
             let oldDefaults = Self.presetDefaults(for: oldPreset)
             let newDefaults = Self.presetDefaults(for: newPreset)
-            if beamSize == oldDefaults.beamSize {
-                beamSize = newDefaults.beamSize
-            }
-            if abs(temperature - oldDefaults.temperature) < 0.0001 {
-                temperature = newDefaults.temperature
-            }
-            if bestOf == oldDefaults.bestOf {
-                bestOf = newDefaults.bestOf
-            }
+            if beamSize == oldDefaults.beamSize { beamSize = newDefaults.beamSize }
+            if abs(temperature - oldDefaults.temperature) < 0.0001 { temperature = newDefaults.temperature }
+            if bestOf == oldDefaults.bestOf { bestOf = newDefaults.bestOf }
         }
     }
     @Published var whisperBinaryPath: String { didSet { defaults.set(whisperBinaryPath, forKey: Keys.whisperBinaryPath) } }
@@ -62,6 +59,13 @@ final class SettingsModel: ObservableObject {
     @Published var preferOnDevice: Bool { didSet { defaults.set(preferOnDevice, forKey: Keys.preferOnDevice) } }
     @Published var showHUD: Bool { didSet { defaults.set(showHUD, forKey: Keys.showHUD) } }
     @Published var themeMode: ThemeMode { didSet { defaults.set(themeMode.rawValue, forKey: Keys.themeMode) } }
+    @Published var selectedThemeID: String { didSet { defaults.set(selectedThemeID, forKey: Keys.selectedThemeID) } }
+    @Published var customThemeEnabled: Bool { didSet { defaults.set(customThemeEnabled, forKey: Keys.customThemeEnabled) } }
+    @Published var customThemeHex: String { didSet { defaults.set(customThemeHex, forKey: Keys.customThemeHex) } }
+    @Published var hudPositionX: Double { didSet { defaults.set(hudPositionX, forKey: Keys.hudPositionX) } }
+    @Published var hudPositionY: Double { didSet { defaults.set(hudPositionY, forKey: Keys.hudPositionY) } }
+    @Published var hasCustomHUDPosition: Bool { didSet { defaults.set(hasCustomHUDPosition, forKey: Keys.hasCustomHUDPosition) } }
+    @Published var hasShownInputMonitoringHint: Bool { didSet { defaults.set(hasShownInputMonitoringHint, forKey: Keys.hasShownInputMonitoringHint) } }
     @Published var verboseLogging: Bool { didSet { defaults.set(verboseLogging, forKey: Keys.verboseLogging) } }
     @Published var hasCompletedOnboarding: Bool { didSet { defaults.set(hasCompletedOnboarding, forKey: Keys.hasCompletedOnboarding) } }
 
@@ -69,8 +73,8 @@ final class SettingsModel: ObservableObject {
 
     init() {
         defaults.register(defaults: [
-            Keys.hotkeyKeyCode: Int(Hotkey.default.keyCode),
-            Keys.hotkeyModifiers: Int(Hotkey.default.modifiers),
+            Keys.pushToTalkKeybindData: Self.encodeKeybind(Keybind.defaultPushToTalk),
+            Keys.longDictationKeybindData: Self.encodeKeybind(Keybind.defaultLongDictation),
             Keys.insertionMode: InsertionMode.pasteboard.rawValue,
             Keys.languageIdentifier: Self.defaultLanguageIdentifier(),
             Keys.transcriptionBackend: TranscriptionBackend.localWhisperCpp.rawValue,
@@ -106,34 +110,46 @@ final class SettingsModel: ObservableObject {
             Keys.noFramesTimeoutSeconds: 0.5,
             Keys.vadThresholdRMS: 0.015,
             Keys.vadGraceSeconds: 0.6,
-            Keys.restoreClipboard: true,
+            Keys.restoreClipboard: false,
             Keys.preferOnDevice: true,
             Keys.showHUD: true,
             Keys.themeMode: ThemeMode.system.rawValue,
+            Keys.selectedThemeID: RoyalThemes.defaultTheme.id,
+            Keys.customThemeEnabled: false,
+            Keys.customThemeHex: "",
+            Keys.hudPositionX: 0.0,
+            Keys.hudPositionY: 0.0,
+            Keys.hasCustomHUDPosition: false,
+            Keys.hasShownInputMonitoringHint: false,
             Keys.verboseLogging: false,
-            Keys.hasCompletedOnboarding: false
+            Keys.hasCompletedOnboarding: false,
+            Keys.hotkeyKeyCode: Int(UInt32(kVK_Space)),
+            Keys.hotkeyModifiers: Int(optionKey)
         ])
 
-        let keyCode = defaults.integer(forKey: Keys.hotkeyKeyCode)
-        let modifiers = defaults.integer(forKey: Keys.hotkeyModifiers)
-        let storedLanguage = defaults.string(forKey: Keys.languageIdentifier)
-        let languageIdentifierValue = (storedLanguage?.isEmpty == false) ? storedLanguage! : Self.defaultLanguageIdentifier()
-        let transcriptionBackendValue = defaults.string(forKey: Keys.transcriptionBackend) ?? TranscriptionBackend.localWhisperCpp.rawValue
         let transcriptionPresetValue = defaults.string(forKey: Keys.transcriptionPreset) ?? TranscriptionPreset.accuracy.rawValue
-        let preset = TranscriptionPreset(rawValue: transcriptionPresetValue) ?? .accuracy
-        let presetDefaults = Self.presetDefaults(for: preset)
-        let persistent = defaults.persistentDomain(forName: Bundle.main.bundleIdentifier ?? "") ?? [:]
-        let hasBeamSize = persistent[Keys.beamSize] != nil
-        let hasTemperature = persistent[Keys.temperature] != nil
-        let hasBestOf = persistent[Keys.bestOf] != nil
+        let presetDefaults = Self.presetDefaults(for: TranscriptionPreset(rawValue: transcriptionPresetValue) ?? .accuracy)
+
+        let pushToTalkValue = Self.loadKeybind(from: defaults.data(forKey: Keys.pushToTalkKeybindData))
+        let longDictationValue = Self.loadKeybind(from: defaults.data(forKey: Keys.longDictationKeybindData))
+        let legacyHotkey = Self.loadLegacyHotkey(from: defaults)
+
+        let hasPushToTalkStored = defaults.object(forKey: Keys.pushToTalkKeybindData) != nil
+        let hasLongStored = defaults.object(forKey: Keys.longDictationKeybindData) != nil
+
+        let resolvedPushToTalk = hasPushToTalkStored ? (pushToTalkValue ?? .defaultPushToTalk) : .defaultPushToTalk
+        let resolvedLong = hasLongStored ? (longDictationValue ?? .defaultLongDictation) : (legacyHotkey ?? .defaultLongDictation)
+
+        let languageIdentifierValue = Self.normalizeLocaleIdentifier(defaults.string(forKey: Keys.languageIdentifier) ?? Self.defaultLanguageIdentifier())
+        let transcriptionBackendValue = defaults.string(forKey: Keys.transcriptionBackend) ?? TranscriptionBackend.localWhisperCpp.rawValue
         let whisperBinaryPathValue = defaults.string(forKey: Keys.whisperBinaryPath) ?? ""
         let whisperModelPathValue = defaults.string(forKey: Keys.whisperModelPath) ?? ""
         let selectedModelTierValue = SpeechModelTier(rawValue: defaults.string(forKey: Keys.selectedModelTier) ?? SpeechModelTier.small.rawValue) ?? .small
         let modelDirectoryPathValue = defaults.string(forKey: Keys.modelDirectoryPath) ?? ""
         let showLocalPrivacyCopyValue = defaults.bool(forKey: Keys.showLocalPrivacyCopy)
-        let beamSizeValue = hasBeamSize ? max(1, defaults.integer(forKey: Keys.beamSize)) : presetDefaults.beamSize
-        let temperatureValue = hasTemperature ? min(max(defaults.double(forKey: Keys.temperature), 0.0), 1.0) : presetDefaults.temperature
-        let bestOfValue = hasBestOf ? max(1, defaults.integer(forKey: Keys.bestOf)) : presetDefaults.bestOf
+        let beamSizeValue = defaults.object(forKey: Keys.beamSize) != nil ? max(1, defaults.integer(forKey: Keys.beamSize)) : presetDefaults.beamSize
+        let temperatureValue = defaults.object(forKey: Keys.temperature) != nil ? min(max(defaults.double(forKey: Keys.temperature), 0.0), 1.0) : presetDefaults.temperature
+        let bestOfValue = defaults.object(forKey: Keys.bestOf) != nil ? max(1, defaults.integer(forKey: Keys.bestOf)) : presetDefaults.bestOf
         let languageCodeValue = defaults.string(forKey: Keys.languageCode) ?? "en"
         let customPromptValue = defaults.string(forKey: Keys.customPrompt) ?? ""
         let postProcessorReplacementsValue = Self.decodePostProcessorReplacements(from: defaults.data(forKey: Keys.postProcessorReplacements))
@@ -149,6 +165,9 @@ final class SettingsModel: ObservableObject {
         let partialIntervalSecondsValue = defaults.double(forKey: Keys.partialIntervalSeconds)
         let streamingEnabledValue = defaults.bool(forKey: Keys.streamingEnabled)
         let themeModeValue = ThemeMode(rawValue: defaults.string(forKey: Keys.themeMode) ?? ThemeMode.system.rawValue) ?? .system
+        let selectedThemeIDValue = defaults.string(forKey: Keys.selectedThemeID) ?? RoyalThemes.defaultTheme.id
+        let customThemeEnabledValue = defaults.bool(forKey: Keys.customThemeEnabled)
+        let customThemeHexValue = defaults.string(forKey: Keys.customThemeHex) ?? ""
         let partialTranscriptionTimeoutValue = defaults.double(forKey: Keys.partialTranscriptionTimeoutSeconds)
         var phraseMapValue = Self.decodePhraseMap(from: defaults.data(forKey: Keys.phraseMapData))
         var shouldSavePhraseMap = false
@@ -164,7 +183,8 @@ final class SettingsModel: ObservableObject {
             shouldSavePhraseMap = true
         }
 
-        hotkey = Hotkey(keyCode: UInt32(keyCode), modifiers: UInt32(modifiers))
+        pushToTalkKeybind = resolvedPushToTalk
+        longDictationKeybind = resolvedLong
         insertionMode = InsertionMode(rawValue: defaults.string(forKey: Keys.insertionMode) ?? InsertionMode.pasteboard.rawValue) ?? .pasteboard
         languageIdentifier = languageIdentifierValue
         transcriptionBackend = transcriptionBackendValue
@@ -174,9 +194,9 @@ final class SettingsModel: ObservableObject {
         selectedModelTier = selectedModelTierValue
         modelDirectoryPath = modelDirectoryPathValue
         showLocalPrivacyCopy = showLocalPrivacyCopyValue
-        beamSize = beamSizeValue > 0 ? beamSizeValue : presetDefaults.beamSize
-        temperature = temperatureValue >= 0.0 && temperatureValue <= 1.0 ? temperatureValue : presetDefaults.temperature
-        bestOf = bestOfValue > 0 ? bestOfValue : presetDefaults.bestOf
+        beamSize = beamSizeValue
+        temperature = temperatureValue
+        bestOf = bestOfValue
         languageCode = languageCodeValue.isEmpty ? "en" : languageCodeValue
         customPrompt = customPromptValue
         postProcessorReplacements = postProcessorReplacementsValue
@@ -189,8 +209,8 @@ final class SettingsModel: ObservableObject {
         fillerRemovalEnabled = fillerRemovalEnabledValue
         repeatedWordCollapseEnabled = repeatedWordCollapseEnabledValue
         styleMode = styleModeValue
-        partialWindowSeconds = partialWindowSecondsValue
-        partialIntervalSeconds = partialIntervalSecondsValue
+        partialWindowSeconds = partialWindowSecondsValue > 0 ? partialWindowSecondsValue : 4.0
+        partialIntervalSeconds = partialIntervalSecondsValue > 0 ? partialIntervalSecondsValue : 1.8
         streamingEnabled = streamingEnabledValue
         maxRecordingSeconds = defaults.double(forKey: Keys.maxRecordingSeconds)
         transcriptionTimeoutSeconds = defaults.double(forKey: Keys.transcriptionTimeoutSeconds)
@@ -204,35 +224,88 @@ final class SettingsModel: ObservableObject {
         preferOnDevice = defaults.bool(forKey: Keys.preferOnDevice)
         showHUD = defaults.bool(forKey: Keys.showHUD)
         themeMode = themeModeValue
+        selectedThemeID = selectedThemeIDValue
+        customThemeEnabled = customThemeEnabledValue
+        customThemeHex = customThemeHexValue
+        hudPositionX = defaults.double(forKey: Keys.hudPositionX)
+        hudPositionY = defaults.double(forKey: Keys.hudPositionY)
+        hasCustomHUDPosition = defaults.bool(forKey: Keys.hasCustomHUDPosition)
+        hasShownInputMonitoringHint = defaults.bool(forKey: Keys.hasShownInputMonitoringHint)
         verboseLogging = defaults.bool(forKey: Keys.verboseLogging)
         hasCompletedOnboarding = defaults.bool(forKey: Keys.hasCompletedOnboarding)
 
         if shouldSavePhraseMap {
             savePhraseMap()
         }
-    }
-
-    private func saveHotkey() {
-        defaults.set(Int(hotkey.keyCode), forKey: Keys.hotkeyKeyCode)
-        defaults.set(Int(hotkey.modifiers), forKey: Keys.hotkeyModifiers)
-    }
-
-    private func savePostProcessorReplacements() {
-        guard let data = try? JSONEncoder().encode(postProcessorReplacements) else { return }
-        defaults.set(data, forKey: Keys.postProcessorReplacements)
-    }
-
-    private func savePhraseMap() {
-        defaults.set(Self.encodePhraseMap(phraseMap), forKey: Keys.phraseMapData)
+        if !hasPushToTalkStored {
+            saveKeybind(pushToTalkKeybind, key: Keys.pushToTalkKeybindData)
+        }
+        if !hasLongStored {
+            saveKeybind(longDictationKeybind, key: Keys.longDictationKeybindData)
+        }
     }
 
     var selectedLocaleIdentifier: String {
         languageIdentifier
     }
 
+    var effectiveTheme: Theme {
+        ThemeManager.effectiveTheme(selectedID: selectedThemeID,
+                                    customHexEnabled: customThemeEnabled,
+                                    customHex: customThemeHex)
+    }
+
+    var customThemeHexIsValid: Bool {
+        ThemeManager.normalizedHex(customThemeHex) != nil
+    }
+
+    var themeTintColor: Color {
+        ThemeManager.swiftUIColor(from: effectiveTheme.primaryHex)
+    }
+
+    func effectivePrompt() -> String {
+        let trimmed = customPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            return trimmed
+        }
+        guard phraseMapEnabled else { return "" }
+        var normalized: [String] = []
+        normalized.reserveCapacity(phraseMap.count)
+        for value in phraseMap.values {
+            let item = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !item.isEmpty {
+                normalized.append(item)
+            }
+        }
+        guard !normalized.isEmpty else { return "" }
+        var seen = Set<String>()
+        var unique: [String] = []
+        for item in normalized {
+            let key = item.lowercased()
+            if seen.insert(key).inserted {
+                unique.append(item)
+            }
+        }
+        unique.sort { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        let prefix = "Proper nouns: "
+        var resultItems: [String] = []
+        var length = prefix.count
+        for item in unique {
+            let extra = resultItems.isEmpty ? item.count : item.count + 2
+            if length + extra > 400 { break }
+            resultItems.append(item)
+            length += extra
+            if resultItems.count >= 50 { break }
+        }
+        guard !resultItems.isEmpty else { return "" }
+        return prefix + resultItems.joined(separator: ", ")
+    }
+
     enum Keys {
         static let hotkeyKeyCode = "dicta.hotkey.keyCode"
         static let hotkeyModifiers = "dicta.hotkey.modifiers"
+        static let pushToTalkKeybindData = "dicta.keybind.pushToTalk"
+        static let longDictationKeybindData = "dicta.keybind.longDictation"
         static let insertionMode = "dicta.insertion.mode"
         static let languageIdentifier = "dicta.language.identifier"
         static let transcriptionBackend = "dicta.transcription.backend"
@@ -272,17 +345,15 @@ final class SettingsModel: ObservableObject {
         static let preferOnDevice = "dicta.preferOnDevice"
         static let showHUD = "dicta.showHUD"
         static let themeMode = "dicta.themeMode"
+        static let selectedThemeID = "dicta.theme.selectedID"
+        static let customThemeEnabled = "dicta.theme.customEnabled"
+        static let customThemeHex = "dicta.theme.customHex"
+        static let hudPositionX = "dicta.hud.positionX"
+        static let hudPositionY = "dicta.hud.positionY"
+        static let hasCustomHUDPosition = "dicta.hud.hasCustomPosition"
+        static let hasShownInputMonitoringHint = "dicta.inputMonitoring.hasShownHint"
         static let verboseLogging = "dicta.verboseLogging"
         static let hasCompletedOnboarding = "dicta.hasCompletedOnboarding"
-    }
-
-    private static func defaultLanguageIdentifier() -> String {
-        let supported = Set(SFSpeechRecognizer.supportedLocales().map { normalizeLocaleIdentifier($0.identifier) })
-        if supported.contains("en-US") {
-            return "en-US"
-        }
-
-        return supported.sorted().first ?? "en-US"
     }
 
     enum TranscriptionBackend: String {
@@ -309,15 +380,6 @@ final class SettingsModel: ObservableObject {
         var id: String { rawValue }
     }
 
-    private static func normalizeLocaleIdentifier(_ identifier: String) -> String {
-        let normalized = identifier.replacingOccurrences(of: "_", with: "-")
-        let parts = normalized.split(separator: "-")
-        guard parts.count >= 2 else { return normalized }
-        let language = parts[0].lowercased()
-        let region = parts[1].uppercased()
-        return "\(language)-\(region)"
-    }
-
     static func presetDefaults(for preset: TranscriptionPreset) -> (beamSize: Int, temperature: Double, bestOf: Int) {
         switch preset {
         case .accuracy:
@@ -327,45 +389,39 @@ final class SettingsModel: ObservableObject {
         }
     }
 
-    func effectivePrompt() -> String {
-        let trimmed = customPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty {
-            return trimmed
-        }
-        guard phraseMapEnabled else { return "" }
-        var normalized: [String] = []
-        normalized.reserveCapacity(phraseMap.count)
-        for value in phraseMap.values {
-            let item = value.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !item.isEmpty {
-                normalized.append(item)
-            }
-        }
-        if normalized.isEmpty {
-            return ""
-        }
-        var seen = Set<String>()
-        var unique: [String] = []
-        for item in normalized {
-            let key = item.lowercased()
-            if seen.contains(key) { continue }
-            seen.insert(key)
-            unique.append(item)
-        }
-        unique.sort { $0.lowercased() < $1.lowercased() }
-        let prefix = "Proper nouns: "
-        var resultItems: [String] = []
-        resultItems.reserveCapacity(min(50, unique.count))
-        var length = prefix.count
-        for item in unique {
-            let extra = (resultItems.isEmpty ? item.count : (2 + item.count))
-            if length + extra > 400 { break }
-            resultItems.append(item)
-            length += extra
-            if resultItems.count >= 50 { break }
-        }
-        guard !resultItems.isEmpty else { return "" }
-        return prefix + resultItems.joined(separator: ", ")
+    private static func defaultLanguageIdentifier() -> String {
+        let supported = Set(SFSpeechRecognizer.supportedLocales().map { normalizeLocaleIdentifier($0.identifier) })
+        if supported.contains("en-US") { return "en-US" }
+        return supported.sorted().first ?? "en-US"
+    }
+
+    private func savePostProcessorReplacements() {
+        guard let data = try? JSONEncoder().encode(postProcessorReplacements) else { return }
+        defaults.set(data, forKey: Keys.postProcessorReplacements)
+    }
+
+    private func savePhraseMap() {
+        defaults.set(Self.encodePhraseMap(phraseMap), forKey: Keys.phraseMapData)
+    }
+
+    private func saveKeybind(_ keybind: Keybind, key: String) {
+        defaults.set(Self.encodeKeybind(keybind), forKey: key)
+    }
+
+    private static func loadKeybind(from data: Data?) -> Keybind? {
+        guard let data, !data.isEmpty else { return nil }
+        return try? JSONDecoder().decode(Keybind.self, from: data)
+    }
+
+    private static func encodeKeybind(_ keybind: Keybind) -> Data {
+        (try? JSONEncoder().encode(keybind)) ?? Data()
+    }
+
+    private static func loadLegacyHotkey(from defaults: UserDefaults) -> Keybind? {
+        guard defaults.object(forKey: Keys.hotkeyKeyCode) != nil else { return nil }
+        let keyCode = UInt16(defaults.integer(forKey: Keys.hotkeyKeyCode))
+        let modifiers = NSEvent.ModifierFlags(rawValue: UInt(defaults.integer(forKey: Keys.hotkeyModifiers))).hotkeyRelevant
+        return Keybind(keyCode: keyCode, modifiers: modifiers, kind: .combo, side: nil)
     }
 
     private static func decodePostProcessorReplacements(from data: Data?) -> [String: String] {
@@ -397,6 +453,15 @@ final class SettingsModel: ObservableObject {
             }
         }
         return merged
+    }
+
+    private static func normalizeLocaleIdentifier(_ identifier: String) -> String {
+        let normalized = identifier.replacingOccurrences(of: "_", with: "-")
+        let parts = normalized.split(separator: "-")
+        guard parts.count >= 2 else { return normalized }
+        let language = parts[0].lowercased()
+        let region = parts[1].uppercased()
+        return "\(language)-\(region)"
     }
 }
 
