@@ -7,6 +7,10 @@ final class SettingsModel: ObservableObject {
     @Published var hotkey: Hotkey { didSet { saveHotkey() } }
     @Published var insertionMode: InsertionMode { didSet { defaults.set(insertionMode.rawValue, forKey: Keys.insertionMode) } }
     @Published var languageIdentifier: String { didSet { defaults.set(languageIdentifier, forKey: Keys.languageIdentifier) } }
+    @Published var transcriptionBackend: String { didSet { defaults.set(transcriptionBackend, forKey: Keys.transcriptionBackend) } }
+    @Published var whisperBinaryPath: String { didSet { defaults.set(whisperBinaryPath, forKey: Keys.whisperBinaryPath) } }
+    @Published var whisperModelPath: String { didSet { defaults.set(whisperModelPath, forKey: Keys.whisperModelPath) } }
+    @Published var customPrompt: String { didSet { defaults.set(customPrompt, forKey: Keys.customPrompt) } }
     @Published var postProcessorReplacements: [String: String] { didSet { savePostProcessorReplacements() } }
     @Published var postProcessorJSONPath: String { didSet { defaults.set(postProcessorJSONPath, forKey: Keys.postProcessorJSONPath) } }
     @Published var smartPunctuationEnabled: Bool { didSet { defaults.set(smartPunctuationEnabled, forKey: Keys.smartPunctuationEnabled) } }
@@ -35,6 +39,10 @@ final class SettingsModel: ObservableObject {
             Keys.hotkeyModifiers: Int(Hotkey.default.modifiers),
             Keys.insertionMode: InsertionMode.pasteboard.rawValue,
             Keys.languageIdentifier: Self.defaultLanguageIdentifier(),
+            Keys.transcriptionBackend: TranscriptionBackend.localWhisperCpp.rawValue,
+            Keys.whisperBinaryPath: "",
+            Keys.whisperModelPath: "",
+            Keys.customPrompt: "",
             Keys.postProcessorReplacements: Data(),
             Keys.postProcessorJSONPath: "",
             Keys.smartPunctuationEnabled: true,
@@ -60,6 +68,10 @@ final class SettingsModel: ObservableObject {
         let modifiers = defaults.integer(forKey: Keys.hotkeyModifiers)
         let storedLanguage = defaults.string(forKey: Keys.languageIdentifier)
         let languageIdentifierValue = (storedLanguage?.isEmpty == false) ? storedLanguage! : Self.defaultLanguageIdentifier()
+        let transcriptionBackendValue = defaults.string(forKey: Keys.transcriptionBackend) ?? TranscriptionBackend.localWhisperCpp.rawValue
+        let whisperBinaryPathValue = defaults.string(forKey: Keys.whisperBinaryPath) ?? ""
+        let whisperModelPathValue = defaults.string(forKey: Keys.whisperModelPath) ?? ""
+        let customPromptValue = defaults.string(forKey: Keys.customPrompt) ?? ""
         let postProcessorReplacementsValue = Self.decodePostProcessorReplacements(from: defaults.data(forKey: Keys.postProcessorReplacements))
         let postProcessorJSONPathValue = defaults.string(forKey: Keys.postProcessorJSONPath) ?? ""
         let smartPunctuationEnabledValue = defaults.bool(forKey: Keys.smartPunctuationEnabled)
@@ -83,6 +95,10 @@ final class SettingsModel: ObservableObject {
         hotkey = Hotkey(keyCode: UInt32(keyCode), modifiers: UInt32(modifiers))
         insertionMode = InsertionMode(rawValue: defaults.string(forKey: Keys.insertionMode) ?? InsertionMode.pasteboard.rawValue) ?? .pasteboard
         languageIdentifier = languageIdentifierValue
+        transcriptionBackend = transcriptionBackendValue
+        whisperBinaryPath = whisperBinaryPathValue
+        whisperModelPath = whisperModelPathValue
+        customPrompt = customPromptValue
         postProcessorReplacements = postProcessorReplacementsValue
         postProcessorJSONPath = postProcessorJSONPathValue
         smartPunctuationEnabled = smartPunctuationEnabledValue
@@ -131,6 +147,10 @@ final class SettingsModel: ObservableObject {
         static let hotkeyModifiers = "dicta.hotkey.modifiers"
         static let insertionMode = "dicta.insertion.mode"
         static let languageIdentifier = "dicta.language.identifier"
+        static let transcriptionBackend = "dicta.transcription.backend"
+        static let whisperBinaryPath = "dicta.whisper.binaryPath"
+        static let whisperModelPath = "dicta.whisper.modelPath"
+        static let customPrompt = "dicta.transcription.prompt"
         static let postProcessorReplacements = "dicta.postProcessor.replacements"
         static let postProcessorJSONPath = "dicta.postProcessor.jsonPath"
         static let smartPunctuationEnabled = "dicta.smartPunctuation.enabled"
@@ -159,6 +179,11 @@ final class SettingsModel: ObservableObject {
         }
 
         return supported.sorted().first ?? "en-US"
+    }
+
+    enum TranscriptionBackend: String {
+        case appleSpeech = "apple_speech"
+        case localWhisperCpp = "local_whisper_cpp"
     }
 
     private static func normalizeLocaleIdentifier(_ identifier: String) -> String {

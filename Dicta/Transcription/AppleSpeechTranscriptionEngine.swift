@@ -11,6 +11,11 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
         self.logger = logger
     }
 
+    func transcribeFile(url: URL, locale: Locale, prompt: String) async throws -> String {
+        let result = try await transcribe(url: url, locale: locale, preferOnDevice: settings.preferOnDevice)
+        return result.text
+    }
+
     func transcribe(url: URL, locale: Locale, preferOnDevice: Bool) async throws -> TranscriptionResult {
         guard SFSpeechRecognizer.authorizationStatus() == .authorized else {
             throw TranscriptionError.permissionDenied

@@ -15,6 +15,7 @@ final class DictationController: ObservableObject {
 
     private let audioRecorder: AudioRecorder
     private let transcriptionEngine: TranscriptionEngine
+    private let streamingEngine: TranscriptionEngine
     private let insertionManager: InsertionManager
     private let hudController = HUDController()
     private var currentRecordingURL: URL?
@@ -27,12 +28,20 @@ final class DictationController: ObservableObject {
     private var insertionTask: Task<Void, Never>?
     private var maxRecordingTask: Task<Void, Never>?
     private var startRecordingTask: Task<Void, Never>?
+    private var streamingFinalText: String?
+    private var streamingFailed: Bool = false
+    private var streamingFinalContinuation: CheckedContinuation<String?, Never>?
+    private var lastPartialHUDUpdate = Date.distantPast
+    private var lastPartialText: String = ""
     private var startRequestID: UUID?
     private let watchdogQueue = DispatchQueue(label: "com.dicta.watchdog", qos: .utility)
     private var watchdogTimer: DispatchSourceTimer?
     private var noFramesTask: Task<Void, Never>?
     private var stateEnteredAt = Date()
     private var isStopping = false
+    private var shouldUseStreaming: Bool {
+        settings.transcriptionBackend == SettingsModel.TranscriptionBackend.appleSpeech.rawValue
+    }
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -41,7 +50,13 @@ final class DictationController: ObservableObject {
         self.permissions = permissions
         self.logger = logger
         self.audioRecorder = AudioRecorder(logger: logger)
-        self.transcriptionEngine = AppleSpeechTranscriptionEngine(settings: settings, logger: logger)
+        if settings.transcriptionBackend == SettingsModel.TranscriptionBackend.localWhisperCpp.rawValue {
+            self.transcriptionEngine = LocalWhisperCppEngine(settings: settings, logger: logger)
+            self.streamingEngine = LocalWhisperCppEngine(settings: settings, logger: logger)
+        } else {
+            self.transcriptionEngine = AppleSpeechTranscriptionEngine(settings: settings, logger: logger)
+            self.streamingEngine = AppleSpeechStreamingEngine(settings: settings, logger: logger)
+        }
         self.insertionManager = InsertionManager(
             pasteboardInserter: PasteboardInserter(logger: logger),
             accessibilityInserter: AccessibilityTyperInserter(logger: logger),
@@ -130,15 +145,17 @@ final class DictationController: ObservableObject {
             return
         }
 
-        var speechStatus = permissions.speechStatus()
-        if speechStatus == .notDetermined {
-            speechStatus = await permissions.requestSpeech()
-        }
-        guard speechStatus == .granted else {
-            await MainActor.run {
-                self.fail("Speech recognition permission not granted")
+        if settings.transcriptionBackend == SettingsModel.TranscriptionBackend.appleSpeech.rawValue {
+            var speechStatus = permissions.speechStatus()
+            if speechStatus == .notDetermined {
+                speechStatus = await permissions.requestSpeech()
             }
-            return
+            guard speechStatus == .granted else {
+                await MainActor.run {
+                    self.fail("Speech recognition permission not granted")
+                }
+                return
+            }
         }
 
         let shouldProceed = await MainActor.run { [weak self] in
@@ -155,6 +172,9 @@ final class DictationController: ObservableObject {
                 self.transition(to: .recording(startedAt: Date()), reason: "Recording started")
                 self.startMaxRecordingTimer()
                 self.startNoFramesCheck()
+                if self.shouldUseStreaming {
+                    self.startStreamingSession()
+                }
                 self.updateHUD(for: self.state)
             }
         } catch {
@@ -203,6 +223,9 @@ final class DictationController: ObservableObject {
                 }
             }
             do {
+                if self.shouldUseStreaming {
+                    await self.streamingEngine.stopStreaming()
+                }
                 let recordingInfo = try await self.audioRecorder.stopRecording()
                 DiagnosticsManager.shared.addRecentAudio(recordingInfo.url)
                 self.logger.log(.audio, "Stop recording finished (file: \(recordingInfo.url.lastPathComponent), duration: \(String(format: "%.2f", recordingInfo.duration))s, bytes: \(recordingInfo.fileSizeBytes), frames: \(recordingInfo.stats.framesReceived))")
@@ -215,6 +238,19 @@ final class DictationController: ObservableObject {
                 if recordingInfo.stats.framesReceived == 0 || recordingInfo.fileSizeBytes == 0 {
                     await MainActor.run {
                         self.fail("Empty audio file (no frames captured)")
+                    }
+                    return
+                }
+                var streamingFinal: String?
+                var shouldUseStreaming = false
+                if self.shouldUseStreaming {
+                    streamingFinal = await self.waitForStreamingFinal(timeout: 2.0)
+                    shouldUseStreaming = await MainActor.run { !self.streamingFailed }
+                }
+                if let streamingFinal, shouldUseStreaming {
+                    self.logger.log(.transcription, "Using streaming final transcript (length: \(streamingFinal.count))")
+                    await MainActor.run {
+                        self.handleTranscriptionSuccess(TranscriptionResult(text: streamingFinal, confidence: nil, segmentDurations: nil))
                     }
                     return
                 }
@@ -235,17 +271,19 @@ final class DictationController: ObservableObject {
             logger.log(.transcription, "Transcription started for \(url.lastPathComponent) (locale: \(languageIdentifier), preferOnDevice: \(preferOnDevice))")
             let locale = Locale(identifier: languageIdentifier)
             let start = Date()
-            let result = try await withTimeout(seconds: timeout, timeoutError: TranscriptionError.timeout) {
-                try await self.transcriptionEngine.transcribe(url: url, locale: locale, preferOnDevice: preferOnDevice)
+            let rawText = try await withTimeout(seconds: timeout, timeoutError: TranscriptionError.timeout) {
+                try await self.transcriptionEngine.transcribeFile(url: url,
+                                                                 locale: locale,
+                                                                 prompt: self.settings.customPrompt)
             }
             let duration = Date().timeIntervalSince(start)
             await MainActor.run {
                 self.lastTranscriptionDuration = duration
                 self.lastTranscriptionErrorDetails = "none"
             }
-            logger.log(.transcription, "Transcription finished (length: \(result.text.count))")
+            logger.log(.transcription, "Transcription finished (length: \(rawText.count))")
             await MainActor.run {
-                self.handleTranscriptionSuccess(result)
+                self.handleTranscriptionSuccess(TranscriptionResult(text: rawText, confidence: nil, segmentDurations: nil))
             }
         } catch {
             if Task.isCancelled {
@@ -326,6 +364,7 @@ final class DictationController: ObservableObject {
         maxRecordingTask?.cancel()
         noFramesTask?.cancel()
         audioRecorder.cancelRecording()
+        streamingEngine.cancelStreaming()
         currentRecordingURL = nil
         transition(to: .idle, reason: "Cancelled")
         updateHUD(for: .idle)
@@ -346,6 +385,84 @@ final class DictationController: ObservableObject {
             if case .error = self.state {
                 self.transition(to: .idle, reason: "Auto reset after error")
                 self.updateHUD(for: .idle)
+            }
+        }
+    }
+
+    private func startStreamingSession() {
+        streamingFailed = false
+        streamingFinalText = nil
+        streamingFinalContinuation = nil
+        lastPartialText = ""
+        lastPartialHUDUpdate = Date.distantPast
+
+        let locale = Locale(identifier: settings.languageIdentifier)
+        let contextualStrings = PhraseMapStore.contextualStrings(settings: settings)
+        do {
+            try streamingEngine.startStreaming(locale: locale,
+                                               contextualStrings: contextualStrings,
+                                               preferOnDevice: settings.preferOnDevice,
+                                               partialHandler: { [weak self] text in
+                                                   Task { @MainActor in
+                                                       self?.handleStreamingPartial(text)
+                                                   }
+                                               },
+                                               finalHandler: { [weak self] text in
+                                                   Task { @MainActor in
+                                                       self?.handleStreamingFinal(text)
+                                                   }
+                                               },
+                                               errorHandler: { [weak self] error in
+                                                   Task { @MainActor in
+                                                       self?.handleStreamingError(error)
+                                                   }
+                                               })
+            logger.log(.transcription, "Streaming started")
+            audioRecorder.onAudioBuffer = { [weak self] buffer in
+                self?.streamingEngine.feedAudio(buffer: buffer)
+            }
+        } catch {
+            streamingFailed = true
+            logger.log(.transcription, "Streaming start failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func handleStreamingPartial(_ text: String) {
+        guard case .recording = state else { return }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let now = Date()
+        if now.timeIntervalSince(lastPartialHUDUpdate) < 0.12, trimmed == lastPartialText {
+            return
+        }
+        lastPartialHUDUpdate = now
+        lastPartialText = trimmed
+        logger.log(.transcription, "Streaming partial (length: \(trimmed.count))", verbose: true)
+        hudController.show(text: trimmed, mode: .listening)
+    }
+
+    private func handleStreamingFinal(_ text: String) {
+        streamingFinalText = text
+        streamingFinalContinuation?.resume(returning: text)
+        streamingFinalContinuation = nil
+    }
+
+    private func handleStreamingError(_ error: Error) {
+        streamingFailed = true
+        let details = Self.detailedErrorDescription(error)
+        logger.log(.transcription, "Streaming error: \(details)")
+    }
+
+    private func waitForStreamingFinal(timeout: Double) async -> String? {
+        if let streamingFinalText { return streamingFinalText }
+        return await withCheckedContinuation { continuation in
+            streamingFinalContinuation = continuation
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                if self.streamingFinalContinuation != nil {
+                    self.streamingFinalContinuation?.resume(returning: nil)
+                    self.streamingFinalContinuation = nil
+                }
             }
         }
     }
