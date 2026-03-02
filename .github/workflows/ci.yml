@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache SwiftPM and DerivedData
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-xcode-${{ hashFiles('**/Package.resolved', '**/*.xcodeproj/project.pbxproj') }}
+          restore-keys: |
+            ${{ runner.os }}-xcode-
+
+      - name: Show Xcode Version
+        run: xcodebuild -version
+
+      - name: List Schemes
+        run: xcodebuild -list -project Dicta.xcodeproj
+
+      - name: Build Debug
+        shell: bash
+        run: |
+          set -o pipefail
+          if command -v xcpretty >/dev/null 2>&1; then
+            xcodebuild -project Dicta.xcodeproj \
+              -scheme Dicta \
+              -configuration Debug \
+              -sdk macosx \
+              -destination 'platform=macOS' \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              clean build | xcpretty
+          else
+            xcodebuild -project Dicta.xcodeproj \
+              -scheme Dicta \
+              -configuration Debug \
+              -sdk macosx \
+              -destination 'platform=macOS' \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              clean build
+          fi
