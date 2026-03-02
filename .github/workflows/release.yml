@@ -1,0 +1,120 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-release:
+    runs-on: macos-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode Version
+        run: xcodebuild -version
+
+      - name: Set Tag
+        shell: bash
+        run: |
+          echo "TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Build Release
+        run: |
+          xcodebuild -project Dicta.xcodeproj \
+            -scheme Dicta \
+            -configuration Release \
+            -sdk macosx \
+            -destination 'platform=macOS' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            clean build
+
+      - name: Package App
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH="build/DerivedData/Build/Products/Release/Dicta.app"
+          ZIP_NAME="Dicta-${TAG}.zip"
+          if [[ ! -d "$APP_PATH" ]]; then
+            echo "Missing built app at $APP_PATH" >&2
+            exit 1
+          fi
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$ZIP_NAME"
+          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
+          echo "ZIP_PATH=$PWD/$ZIP_NAME" >> "$GITHUB_ENV"
+          echo "ZIP_SIZE=$(stat -f%z "$ZIP_NAME")" >> "$GITHUB_ENV"
+
+      - name: Download Sparkle Tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOOLS_DIR="$(bash scripts/sparkle_tools.sh 2.9.0 "$RUNNER_TEMP/sparkle-tools")"
+          echo "TOOLS_DIR=$TOOLS_DIR" >> "$GITHUB_ENV"
+
+      - name: Sign Release Archive
+        env:
+          SPARKLE_EDDSA_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${SPARKLE_EDDSA_PRIVATE_KEY:-}" ]]; then
+            echo "Missing SPARKLE_EDDSA_PRIVATE_KEY secret" >&2
+            exit 1
+          fi
+          ED_SIGNATURE="$(printf '%s' "$SPARKLE_EDDSA_PRIVATE_KEY" | "$TOOLS_DIR/bin/sign_update" --ed-key-file - -p "$ZIP_PATH")"
+          echo "ED_SIGNATURE=$ED_SIGNATURE" >> "$GITHUB_ENV"
+
+      - name: Refresh Existing Appcast
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p docs
+          TEMP_APPCAST="$RUNNER_TEMP/appcast.xml"
+          if curl -fsSL https://jahrix.github.io/Dicta/appcast.xml -o "$TEMP_APPCAST"; then
+            mv "$TEMP_APPCAST" docs/appcast.xml
+          fi
+
+      - name: Update Appcast
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_URL="https://github.com/Jahrix/Dicta/releases/download/${TAG}/${ZIP_NAME}"
+          TAG_URL="https://github.com/Jahrix/Dicta/releases/tag/${TAG}"
+          ruby scripts/update_appcast.rb \
+            --file docs/appcast.xml \
+            --tag "$TAG" \
+            --version "$VERSION" \
+            --download-url "$RELEASE_URL" \
+            --release-url "$TAG_URL" \
+            --signature "$ED_SIGNATURE" \
+            --length "$ZIP_SIZE"
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.ZIP_PATH }}

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+  xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"
+  xmlns:dc="http://purl.org/dc/elements/1.1/"
+  xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Dicta Updates</title>
+    <link>https://jahrix.github.io/Dicta/appcast.xml</link>
+    <atom:link href="https://jahrix.github.io/Dicta/appcast.xml" rel="self" type="application/rss+xml" />
+    <description>Latest releases for Dicta</description>
+    <language>en</language>
+    <lastBuildDate>Mon, 02 Mar 2026 00:00:00 +0000</lastBuildDate>
+  </channel>
+</rss>

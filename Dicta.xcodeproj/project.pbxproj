@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		3901825C976A48309ECE609C /* FrontmostApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E7BF4B0A64048CFA10EA9B0 /* FrontmostApp.swift */; };
+		F60100000000000000000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = F80100000000000000000001 /* Sparkle */; };
 		E10101010101010101010101 /* DictaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10101010101010101010101 /* DictaApp.swift */; };
 		E10202020202020202020202 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10202020202020202020202 /* AppDelegate.swift */; };
 		E10303030303030303030303 /* DictationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10303030303030303030303 /* DictationController.swift */; };
@@ -115,6 +116,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F60100000000000000000001 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -297,6 +299,9 @@
 			dependencies = (
 			);
 			name = Dicta;
+			packageProductDependencies = (
+				F80100000000000000000001 /* Sparkle */,
+			);
 			productName = Dicta;
 			productReference = D12222222222222222222222 /* Dicta.app */;
 			productType = "com.apple.product-type.application";
@@ -324,6 +329,9 @@
 				en,
 			);
 			mainGroup = A4A4A4A4A4A4A4A4A4A4A4A4;
+			packageReferences = (
+				F70100000000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			productRefGroup = C2C2C2C2C2C2C2C2C2C2C2C2 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -332,6 +340,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F70100000000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin PBXResourcesBuildPhase section */
 		A6A6A6A6A6A6A6A6A6A6A6A6 /* Resources */ = {
@@ -494,6 +513,14 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F80100000000000000000001 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F70100000000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A1A1A1A1A1A1A1A1A1A1A1A1 /* Project object */;
 }

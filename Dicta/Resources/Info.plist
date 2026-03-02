@@ -28,6 +28,10 @@
     <string>Dicta needs microphone access to record your dictation.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>Dicta uses Apple Speech Recognition to transcribe your dictation.</string>
+    <key>SUFeedURL</key>
+    <string>https://jahrix.github.io/Dicta/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>&lt;PUBLIC_EDDSA_KEY&gt;</string>
     <key>NSHumanReadableCopyright</key>
     <string>© 2026 Dicta</string>
     <key>NSPrincipalClass</key>

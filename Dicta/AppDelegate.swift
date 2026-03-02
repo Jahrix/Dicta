@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import Combine
+import Sparkle
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -12,6 +13,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settingsModel = SettingsModel()
     private let diagnosticsLogger = DiagnosticsLogger.shared
     private let permissionsManager = PermissionsManager()
+    private lazy var updaterController = SPUStandardUpdaterController(startingUpdater: true,
+                                                                      updaterDelegate: nil,
+                                                                      userDriverDelegate: nil)
 
     private lazy var dictationController: DictationController = {
         DictationController(settings: settingsModel,
@@ -35,8 +39,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        _ = updaterController
         setupHotkeys()
-        statusItemController = StatusItemController(viewModel: menuViewModel)
+        statusItemController = StatusItemController(viewModel: menuViewModel,
+                                                    checkForUpdates: { [weak self] in
+                                                        self?.updaterController.checkForUpdates(nil)
+                                                    })
 
         if !settingsModel.hasCompletedOnboarding {
             openOnboardingWindow()

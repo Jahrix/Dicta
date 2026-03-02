@@ -22,12 +22,15 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let showLastErrorItem = NSMenuItem(title: "Show Last Error", action: #selector(showLastError), keyEquivalent: "")
     private let copyLastErrorItem = NSMenuItem(title: "Copy Last Error", action: #selector(copyLastError), keyEquivalent: "")
     private let copyDebugSummaryItem = NSMenuItem(title: "Copy Debug Summary", action: #selector(copyDebugSummary), keyEquivalent: "")
+    private let checkForUpdatesItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
 
     private let settingsItem = NSMenuItem(title: "Open Settings…", action: #selector(showSettings), keyEquivalent: ",")
     private let quitItem = NSMenuItem(title: "Quit Dicta", action: #selector(quitApp), keyEquivalent: "q")
+    private let checkForUpdatesAction: (() -> Void)?
 
-    init(viewModel: MenuViewModel) {
+    init(viewModel: MenuViewModel, checkForUpdates: (() -> Void)? = nil) {
         self.viewModel = viewModel
+        self.checkForUpdatesAction = checkForUpdates
         super.init()
         setupMenu()
         bindViewModel()
@@ -40,7 +43,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         statusItem.button?.image?.isTemplate = true
 
         [longToggleItem, copyLastTranscriptItem, pasteLastTranscriptItem, openDiagnosticsItem,
-         exportLogsItem, showLastErrorItem, copyLastErrorItem, copyDebugSummaryItem, settingsItem, quitItem]
+         exportLogsItem, showLastErrorItem, copyLastErrorItem, copyDebugSummaryItem, checkForUpdatesItem,
+         settingsItem, quitItem]
             .forEach { $0.target = self }
 
         statusLineItem.isEnabled = false
@@ -73,6 +77,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         diagnosticsItem.submenu = diagnosticsMenu
         menu.addItem(diagnosticsItem)
 
+        menu.addItem(checkForUpdatesItem)
         menu.addItem(settingsItem)
         menu.addItem(NSMenuItem.separator())
         menu.addItem(quitItem)
@@ -179,6 +184,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func copyDebugSummary() {
         viewModel.copyDebugSummary()
+    }
+
+    @objc private func checkForUpdates() {
+        checkForUpdatesAction?()
     }
 
     @objc private func showSettings() {
