@@ -1,10 +1,11 @@
+import AVFoundation
 import Foundation
 
 @MainActor
 final class LocalWhisperCppEngine: TranscriptionEngine {
     private let settings: SettingsModel
     private let logger: DiagnosticsLogger
-    private static var cachedSupportedFlags: [String: SupportedFlags] = [:]
+    private static var cachedSupportedFlags: [String: LocalWhisperSupportedFlags] = [:]
 
     init(settings: SettingsModel, logger: DiagnosticsLogger) {
         self.settings = settings
@@ -18,49 +19,68 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
 
     func transcribeFile(url: URL, locale: Locale, prompt: String) async throws -> String {
         let binaryPath = try resolveBinaryPath()
-        let modelPath = try resolveModelPath()
-        let finalTimeoutSeconds = settings.transcriptionTimeoutSeconds > 0 ? settings.transcriptionTimeoutSeconds : 30.0
-        let partialTimeoutSetting = settings.partialTranscriptionTimeoutSeconds > 0 ? settings.partialTranscriptionTimeoutSeconds : 12.0
-        let partialTimeoutSeconds = min(partialTimeoutSetting, finalTimeoutSeconds)
-        let supportedFlags = await loadSupportedFlags(binaryPath: binaryPath, timeoutSeconds: partialTimeoutSeconds)
-
+        let modelURL = try resolveModelURL()
+        let timeoutSeconds = settings.transcriptionTimeoutSeconds > 0 ? settings.transcriptionTimeoutSeconds : 45.0
+        let supportedFlags = await loadSupportedFlags(binaryPath: binaryPath, timeoutSeconds: min(timeoutSeconds, 12.0))
         let preset = SettingsModel.TranscriptionPreset(rawValue: settings.transcriptionPreset) ?? .accuracy
         let presetDefaults = SettingsModel.presetDefaults(for: preset)
+        let threads = max(0, settings.threads)
         let beamSize = settings.beamSize > 0 ? settings.beamSize : presetDefaults.beamSize
         let temperature = settings.temperature >= 0.0 && settings.temperature <= 1.0 ? settings.temperature : presetDefaults.temperature
         let bestOf = settings.bestOf > 0 ? settings.bestOf : presetDefaults.bestOf
-        let binaryLabel = redactedPath(binaryPath)
-        let modelLabel = redactedPath(modelPath)
-        logger.log(.transcription, "LocalWhisper preset=\(preset.rawValue) beam=\(beamSize) temp=\(String(format: "%.2f", temperature)) bestOf=\(bestOf) model=\(modelLabel) binary=\(binaryLabel) locale=\(locale.identifier)")
+        let promptBias = settings.enablePromptBias ? prompt.trimmingCharacters(in: .whitespacesAndNewlines) : ""
+        let temperatureText = String(format: "%.2f", temperature)
 
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("DictaWhisper-\(UUID().uuidString)", isDirectory: true)
-        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        logger.log(.transcription,
+                   "LocalWhisper preset=\(preset.rawValue) beam=\(beamSize) temp=\(temperatureText) bestOf=\(bestOf) threads=\(threads) model=\(redactedPath(modelURL.path)) binary=\(redactedPath(binaryPath)) locale=\(locale.identifier)")
 
+        let convertedURL: URL
+        do {
+            convertedURL = try AudioFormatConverter.convertToWhisperWAV(inputURL: url, logger: logger)
+        } catch {
+            let message = "Local ASR unavailable: WAV conversion failed. \(error.localizedDescription)"
+            logger.log(.transcription, message)
+            throw TranscriptionError.underlying(message)
+        }
+        defer { try? FileManager.default.removeItem(at: convertedURL) }
+
+        let argsBuilder = WhisperCLIArgs(modelURL: modelURL,
+                                         wavURL: convertedURL,
+                                         languageCode: normalizedLanguageCode(locale: locale),
+                                         beamSize: beamSize,
+                                         temperature: temperature,
+                                         bestOf: bestOf,
+                                         threads: threads,
+                                         prompt: promptBias,
+                                         supportedFlags: supportedFlags)
+        let arguments = argsBuilder.makeArguments()
+        logger.log(.transcription, "LocalWhisper args: \(argsBuilder.redactedDescription)")
+
+        var lastProcessError: String?
+        for attempt in 1...2 {
+            do {
+                let transcript = try await runWhisper(binaryPath: binaryPath,
+                                                      arguments: arguments,
+                                                      timeoutSeconds: timeoutSeconds)
+                return transcript
+            } catch let LocalWhisperProcessError.nonZeroExit(code, stderr, stdout) {
+                lastProcessError = "exit=\(code) stderr=\(stderr) stdout=\(stdout)"
+                logger.log(.transcription, "LocalWhisper non-zero exit on attempt \(attempt): \(lastProcessError!)")
+                if attempt == 2 {
+                    throw TranscriptionError.underlying("Local whisper failed after retry (code \(code)). \(stderr)")
+                }
+            } catch {
+                throw error
+            }
+        }
+
+        throw TranscriptionError.underlying(lastProcessError ?? "Local whisper failed after retry")
+    }
+
+    private func runWhisper(binaryPath: String, arguments: [String], timeoutSeconds: Double) async throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: binaryPath)
-        process.currentDirectoryURL = tempDir
-
-        var arguments = ["-m", modelPath, "-f", url.path, "-nt"]
-        let language = settings.languageCode.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let flag = supportedFlags.languageFlag, !language.isEmpty {
-            arguments.append(contentsOf: [flag, language])
-        }
-        if let flag = supportedFlags.beamSizeFlag {
-            arguments.append(contentsOf: [flag, String(beamSize)])
-        }
-        if let flag = supportedFlags.temperatureFlag {
-            arguments.append(contentsOf: [flag, String(temperature)])
-        }
-        if let flag = supportedFlags.bestOfFlag {
-            arguments.append(contentsOf: [flag, String(bestOf)])
-        }
-        let trimmedPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let flag = supportedFlags.promptFlag, !trimmedPrompt.isEmpty {
-            arguments.append(contentsOf: [flag, trimmedPrompt])
-        }
         process.arguments = arguments
-        logger.log(.transcription, "LocalWhisper args: \(redactedArguments(arguments))")
 
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
@@ -74,31 +94,22 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
         }
 
         do {
-            let output = try await withTimeout(seconds: finalTimeoutSeconds, timeoutError: TranscriptionError.timeout) {
+            let output = try await withTimeout(seconds: timeoutSeconds, timeoutError: TranscriptionError.timeout) {
                 process.waitUntilExit()
                 let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
                 let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-
                 let rawStdout = String(data: stdoutData, encoding: .utf8) ?? ""
                 let rawStderr = String(data: stderrData, encoding: .utf8) ?? ""
-
                 if process.terminationStatus != 0 {
-                    let tail = Self.tail(rawStderr, maxChars: 800)
-                    throw TranscriptionError.underlying("Local whisper failed (code \(process.terminationStatus)). \(tail)")
+                    throw LocalWhisperProcessError.nonZeroExit(code: Int(process.terminationStatus),
+                                                               stderr: Self.tail(rawStderr, maxChars: 600),
+                                                               stdout: Self.tail(rawStdout, maxChars: 200))
                 }
-
-                let trimmed = rawStdout.trimmingCharacters(in: .whitespacesAndNewlines)
-                let cleaned = trimmed.split(whereSeparator: \.isNewline).joined(separator: " ")
-                if cleaned.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    throw TranscriptionError.noSpeechDetected
-                }
-                return cleaned
+                return try Self.parseTranscript(from: rawStdout)
             }
-
             if process.isRunning {
                 process.terminate()
             }
-
             return output
         } catch {
             if process.isRunning {
@@ -109,98 +120,115 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
     }
 
     private func resolveBinaryPath() throws -> String {
-        if let resourceURL = Bundle.main.resourceURL {
-            let bundledPath = resourceURL.appendingPathComponent("whisper/whisper-cpp").path
-            if FileManager.default.fileExists(atPath: bundledPath) {
-                return bundledPath
-            }
-            let flatPath = resourceURL.appendingPathComponent("whisper-cpp").path
-            if FileManager.default.fileExists(atPath: flatPath) {
-                return flatPath
-            }
-        }
-
-        let homebrewPath = "/opt/homebrew/bin/whisper-cpp"
-        if FileManager.default.fileExists(atPath: homebrewPath) {
-            return homebrewPath
-        }
-
         let overridePath = settings.whisperBinaryPath.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !overridePath.isEmpty, FileManager.default.fileExists(atPath: overridePath) {
+        if !overridePath.isEmpty, FileManager.default.isExecutableFile(atPath: overridePath) {
             return overridePath
         }
 
-        let message = "Local whisper binary not found. Expected bundled Resources/whisper/whisper-cpp or /opt/homebrew/bin/whisper-cpp. Set SettingsModel.whisperBinaryPath to override."
-        logger.log(.transcription, message)
-        throw TranscriptionError.underlying(message)
-    }
-
-    private func resolveModelPath() throws -> String {
-        let tier = settings.selectedModelTier
-        if let resolvedURL = ModelCatalog.resolveModelURL(tier: tier, settings: settings) {
-            let resolvedPath = resolvedURL.path
-            logger.log(.transcription, "LocalASR model tier: \(tier.displayName) (path: \(redactedPath(resolvedPath)))")
-            return resolvedPath
+        let candidatePaths = [
+            "/opt/homebrew/bin/whisper-cpp",
+            "/opt/homebrew/bin/whisper",
+            "/usr/local/bin/whisper-cpp",
+            "/usr/local/bin/whisper"
+        ]
+        for path in candidatePaths where FileManager.default.isExecutableFile(atPath: path) {
+            return path
         }
 
-        logger.log(.transcription, "Model tier \(tier.displayName) unavailable. \(ModelCatalog.missingModelMessage) Falling back to legacy model path.")
-        let legacyPath = try resolveLegacyModelPath()
-        logger.log(.transcription, "LocalASR model fallback path: \(redactedPath(legacyPath))")
-        return legacyPath
-    }
-
-    private func resolveLegacyModelPath() throws -> String {
-        if let resourceURL = Bundle.main.resourceURL {
-            let bundledModel = resourceURL.appendingPathComponent("models/ggml-small.en.bin").path
-            if FileManager.default.fileExists(atPath: bundledModel) {
-                return bundledModel
+        for command in ["whisper-cpp", "whisper"] {
+            if let path = resolveUsingWhich(command: command) {
+                return path
             }
         }
 
-        let overridePath = settings.whisperModelPath.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !overridePath.isEmpty, FileManager.default.fileExists(atPath: overridePath) {
-            return overridePath
-        }
-
-        let message = "Local whisper model not found. Expected bundled Resources/models/ggml-small.en.bin. Set SettingsModel.whisperModelPath to override."
+        let fixPath = appSupportModelsDirectory().path
+        let message = "Local ASR unavailable: missing binary/model. Fix: brew install whisper-cpp, download ggml-small.en.bin to \(fixPath)"
         logger.log(.transcription, message)
         throw TranscriptionError.underlying(message)
     }
 
-    private struct SupportedFlags {
-        let beamSizeFlag: String?
-        let temperatureFlag: String?
-        let bestOfFlag: String?
-        let languageFlag: String?
-        let promptFlag: String?
+    private func resolveModelURL() throws -> URL {
+        let fileManager = FileManager.default
+        let overridePath = settings.whisperModelPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !overridePath.isEmpty, fileManager.fileExists(atPath: overridePath) {
+            return URL(fileURLWithPath: overridePath)
+        }
+
+        let presetDefaults = SettingsModel.presetDefaults(for: SettingsModel.TranscriptionPreset(rawValue: settings.transcriptionPreset) ?? .accuracy)
+        let preferredTier = settings.selectedModelTier
+        let fallbackTier = presetDefaults.modelTier
+        let preferredNames = uniqueModelNames(for: [preferredTier, fallbackTier, .small, .base, .tiny])
+
+        let appSupportDirectory = appSupportModelsDirectory()
+        for name in preferredNames {
+            let candidate = appSupportDirectory.appendingPathComponent(name)
+            if fileManager.fileExists(atPath: candidate.path) {
+                return candidate
+            }
+        }
+        if let candidate = firstModel(in: appSupportDirectory) {
+            return candidate
+        }
+
+        if let resourceURL = Bundle.main.resourceURL {
+            let bundledModels = resourceURL.appendingPathComponent("models", isDirectory: true)
+            for name in preferredNames {
+                let candidate = bundledModels.appendingPathComponent(name)
+                if fileManager.fileExists(atPath: candidate.path) {
+                    return candidate
+                }
+            }
+            if let candidate = firstModel(in: bundledModels) {
+                return candidate
+            }
+        }
+
+        let message = "Local ASR unavailable: missing binary/model. Fix: brew install whisper-cpp, download ggml-small.en.bin to \(appSupportDirectory.path)"
+        logger.log(.transcription, message)
+        throw TranscriptionError.underlying(message)
     }
 
-    private func loadSupportedFlags(binaryPath: String, timeoutSeconds: Double) async -> SupportedFlags {
+    private func resolveUsingWhich(command: String) -> String? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+        process.arguments = [command]
+        let stdoutPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = Pipe()
+        do {
+            try process.run()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else { return nil }
+            let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+            let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return path.isEmpty ? nil : path
+        } catch {
+            return nil
+        }
+    }
+
+    private func loadSupportedFlags(binaryPath: String, timeoutSeconds: Double) async -> LocalWhisperSupportedFlags {
         if let cached = Self.cachedSupportedFlags[binaryPath] {
             return cached
         }
 
         let helpOutput = await readHelpOutput(binaryPath: binaryPath, timeoutSeconds: timeoutSeconds)
-        let lower = helpOutput?.lowercased() ?? ""
-
-        let beamFlag = lower.contains("beam-size") ? "--beam-size" : (lower.contains(" -b ") || lower.contains("\n-b ") ? "-b" : nil)
-        let tempFlag = lower.contains("temperature") ? "--temperature" : nil
-        let bestOfFlag = lower.contains("best-of") ? "--best-of" : nil
-        let languageFlag = lower.contains("--language") ? "--language" : (lower.contains(" -l ") || lower.contains("\n-l ") ? "-l" : nil)
-        let promptFlag = lower.contains("--prompt") ? "--prompt" : (lower.contains(" -p ") || lower.contains("\n-p ") ? "-p" : nil)
-
-        let supported = SupportedFlags(beamSizeFlag: beamFlag,
-                                       temperatureFlag: tempFlag,
-                                       bestOfFlag: bestOfFlag,
-                                       languageFlag: languageFlag,
-                                       promptFlag: promptFlag)
+        let lower = helpOutput.lowercased()
+        let supported = LocalWhisperSupportedFlags(
+            beamSizeFlag: lower.contains("--beam-size") ? "--beam-size" : (lower.contains("--beam_size") ? "--beam_size" : (lower.contains("\n-b") ? "-b" : nil)),
+            temperatureFlag: lower.contains("--temperature") ? "--temperature" : nil,
+            bestOfFlag: lower.contains("--best-of") ? "--best-of" : (lower.contains("--best_of") ? "--best_of" : nil),
+            languageFlag: lower.contains("--language") ? "--language" : (lower.contains("\n-l") ? "-l" : nil),
+            promptFlag: lower.contains("--prompt") ? "--prompt" : (lower.contains("\n-p") ? "-p" : nil),
+            noTimestampsFlag: lower.contains("-nt") || lower.contains("--no-timestamps") ? (lower.contains("--no-timestamps") ? "--no-timestamps" : "-nt") : nil,
+            threadsFlag: lower.contains("--threads") ? "--threads" : (lower.contains("\n-t ") ? "-t" : nil)
+        )
         Self.cachedSupportedFlags[binaryPath] = supported
         return supported
     }
 
-    private func readHelpOutput(binaryPath: String, timeoutSeconds: Double) async -> String? {
-        let attempts = [["--help"], ["-h"]]
-        for args in attempts {
+    private func readHelpOutput(binaryPath: String, timeoutSeconds: Double) async -> String {
+        for args in [["--help"], ["-h"]] {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: binaryPath)
             process.arguments = args
@@ -229,33 +257,48 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
                 return output
             }
         }
-        return nil
+        return ""
     }
 
-    private func redactedArguments(_ args: [String]) -> String {
-        var output: [String] = []
-        var redactNext: String?
-        for arg in args {
-            if let redact = redactNext {
-                output.append(redact)
-                redactNext = nil
-                continue
-            }
-            switch arg {
-            case "-m":
-                output.append(arg)
-                redactNext = "<model>"
-            case "-f":
-                output.append(arg)
-                redactNext = "<audio>"
-            case "-p", "--prompt":
-                output.append(arg)
-                redactNext = "<prompt>"
-            default:
-                output.append(arg)
+    private func appSupportModelsDirectory() -> URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support", isDirectory: true)
+        return base.appendingPathComponent("Dicta/models", isDirectory: true)
+    }
+
+    private func firstModel(in directory: URL) -> URL? {
+        let fileManager = FileManager.default
+        guard let contents = try? fileManager.contentsOfDirectory(at: directory,
+                                                                  includingPropertiesForKeys: nil,
+                                                                  options: [.skipsHiddenFiles]) else {
+            return nil
+        }
+        return contents
+            .filter { $0.pathExtension == "bin" }
+            .sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
+            .first
+    }
+
+    private func uniqueModelNames(for tiers: [SpeechModelTier]) -> [String] {
+        var seen = Set<String>()
+        var ordered: [String] = []
+        for tier in tiers {
+            let filename = tier.defaultModelFilename
+            if seen.insert(filename).inserted {
+                ordered.append(filename)
             }
         }
-        return output.joined(separator: " ")
+        return ordered
+    }
+
+    private func normalizedLanguageCode(locale: Locale) -> String {
+        let configured = settings.languageCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !configured.isEmpty {
+            return configured
+        }
+        return locale.language.languageCode?.identifier
+            ?? (locale as NSLocale).object(forKey: .languageCode) as? String
+            ?? "en"
     }
 
     private func redactedPath(_ path: String) -> String {
@@ -276,6 +319,19 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
             group.cancelAll()
             return result
         }
+    }
+
+    private static func parseTranscript(from stdout: String) throws -> String {
+        let lines = stdout
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .filter { !$0.hasPrefix("[") }
+        let joined = lines.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !joined.isEmpty else {
+            throw TranscriptionError.noSpeechDetected
+        }
+        return joined.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
     }
 
     private static func tail(_ text: String, maxChars: Int) -> String {

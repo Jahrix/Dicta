@@ -22,6 +22,7 @@ final class SettingsModel: ObservableObject {
             if beamSize == oldDefaults.beamSize { beamSize = newDefaults.beamSize }
             if abs(temperature - oldDefaults.temperature) < 0.0001 { temperature = newDefaults.temperature }
             if bestOf == oldDefaults.bestOf { bestOf = newDefaults.bestOf }
+            if selectedModelTier == oldDefaults.modelTier { selectedModelTier = newDefaults.modelTier }
         }
     }
     @Published var whisperBinaryPath: String { didSet { defaults.set(whisperBinaryPath, forKey: Keys.whisperBinaryPath) } }
@@ -29,11 +30,13 @@ final class SettingsModel: ObservableObject {
     @Published var selectedModelTier: SpeechModelTier { didSet { defaults.set(selectedModelTier.rawValue, forKey: Keys.selectedModelTier) } }
     @Published var modelDirectoryPath: String { didSet { defaults.set(modelDirectoryPath, forKey: Keys.modelDirectoryPath) } }
     @Published var showLocalPrivacyCopy: Bool { didSet { defaults.set(showLocalPrivacyCopy, forKey: Keys.showLocalPrivacyCopy) } }
+    @Published var threads: Int { didSet { defaults.set(threads, forKey: Keys.threads) } }
     @Published var beamSize: Int { didSet { defaults.set(beamSize, forKey: Keys.beamSize) } }
     @Published var temperature: Double { didSet { defaults.set(temperature, forKey: Keys.temperature) } }
     @Published var bestOf: Int { didSet { defaults.set(bestOf, forKey: Keys.bestOf) } }
     @Published var languageCode: String { didSet { defaults.set(languageCode, forKey: Keys.languageCode) } }
     @Published var customPrompt: String { didSet { defaults.set(customPrompt, forKey: Keys.customPrompt) } }
+    @Published var enablePromptBias: Bool { didSet { defaults.set(enablePromptBias, forKey: Keys.enablePromptBias) } }
     @Published var postProcessorReplacements: [String: String] { didSet { savePostProcessorReplacements() } }
     @Published var postProcessorJSONPath: String { didSet { defaults.set(postProcessorJSONPath, forKey: Keys.postProcessorJSONPath) } }
     @Published var smartPunctuationEnabled: Bool { didSet { defaults.set(smartPunctuationEnabled, forKey: Keys.smartPunctuationEnabled) } }
@@ -84,11 +87,13 @@ final class SettingsModel: ObservableObject {
             Keys.selectedModelTier: SpeechModelTier.small.rawValue,
             Keys.modelDirectoryPath: "",
             Keys.showLocalPrivacyCopy: true,
+            Keys.threads: 0,
             Keys.beamSize: 5,
             Keys.temperature: 0.0,
             Keys.bestOf: 3,
             Keys.languageCode: "en",
             Keys.customPrompt: "",
+            Keys.enablePromptBias: true,
             Keys.postProcessorReplacements: Data(),
             Keys.postProcessorJSONPath: "",
             Keys.smartPunctuationEnabled: true,
@@ -147,11 +152,13 @@ final class SettingsModel: ObservableObject {
         let selectedModelTierValue = SpeechModelTier(rawValue: defaults.string(forKey: Keys.selectedModelTier) ?? SpeechModelTier.small.rawValue) ?? .small
         let modelDirectoryPathValue = defaults.string(forKey: Keys.modelDirectoryPath) ?? ""
         let showLocalPrivacyCopyValue = defaults.bool(forKey: Keys.showLocalPrivacyCopy)
+        let threadsValue = defaults.object(forKey: Keys.threads) != nil ? max(0, defaults.integer(forKey: Keys.threads)) : 0
         let beamSizeValue = defaults.object(forKey: Keys.beamSize) != nil ? max(1, defaults.integer(forKey: Keys.beamSize)) : presetDefaults.beamSize
         let temperatureValue = defaults.object(forKey: Keys.temperature) != nil ? min(max(defaults.double(forKey: Keys.temperature), 0.0), 1.0) : presetDefaults.temperature
         let bestOfValue = defaults.object(forKey: Keys.bestOf) != nil ? max(1, defaults.integer(forKey: Keys.bestOf)) : presetDefaults.bestOf
         let languageCodeValue = defaults.string(forKey: Keys.languageCode) ?? "en"
         let customPromptValue = defaults.string(forKey: Keys.customPrompt) ?? ""
+        let enablePromptBiasValue = defaults.object(forKey: Keys.enablePromptBias) != nil ? defaults.bool(forKey: Keys.enablePromptBias) : true
         let postProcessorReplacementsValue = Self.decodePostProcessorReplacements(from: defaults.data(forKey: Keys.postProcessorReplacements))
         let postProcessorJSONPathValue = defaults.string(forKey: Keys.postProcessorJSONPath) ?? ""
         let smartPunctuationEnabledValue = defaults.bool(forKey: Keys.smartPunctuationEnabled)
@@ -194,11 +201,13 @@ final class SettingsModel: ObservableObject {
         selectedModelTier = selectedModelTierValue
         modelDirectoryPath = modelDirectoryPathValue
         showLocalPrivacyCopy = showLocalPrivacyCopyValue
+        threads = threadsValue
         beamSize = beamSizeValue
         temperature = temperatureValue
         bestOf = bestOfValue
         languageCode = languageCodeValue.isEmpty ? "en" : languageCodeValue
         customPrompt = customPromptValue
+        enablePromptBias = enablePromptBiasValue
         postProcessorReplacements = postProcessorReplacementsValue
         postProcessorJSONPath = postProcessorJSONPathValue
         smartPunctuationEnabled = smartPunctuationEnabledValue
@@ -268,37 +277,8 @@ final class SettingsModel: ObservableObject {
         if !trimmed.isEmpty {
             return trimmed
         }
-        guard phraseMapEnabled else { return "" }
-        var normalized: [String] = []
-        normalized.reserveCapacity(phraseMap.count)
-        for value in phraseMap.values {
-            let item = value.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !item.isEmpty {
-                normalized.append(item)
-            }
-        }
-        guard !normalized.isEmpty else { return "" }
-        var seen = Set<String>()
-        var unique: [String] = []
-        for item in normalized {
-            let key = item.lowercased()
-            if seen.insert(key).inserted {
-                unique.append(item)
-            }
-        }
-        unique.sort { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
-        let prefix = "Proper nouns: "
-        var resultItems: [String] = []
-        var length = prefix.count
-        for item in unique {
-            let extra = resultItems.isEmpty ? item.count : item.count + 2
-            if length + extra > 400 { break }
-            resultItems.append(item)
-            length += extra
-            if resultItems.count >= 50 { break }
-        }
-        guard !resultItems.isEmpty else { return "" }
-        return prefix + resultItems.joined(separator: ", ")
+        guard enablePromptBias else { return "" }
+        return PhraseMapStore.promptBiasString(settings: self)
     }
 
     enum Keys {
@@ -315,11 +295,13 @@ final class SettingsModel: ObservableObject {
         static let selectedModelTier = "dicta.whisper.modelTier"
         static let modelDirectoryPath = "dicta.whisper.modelDirectoryPath"
         static let showLocalPrivacyCopy = "dicta.whisper.showLocalPrivacyCopy"
+        static let threads = "dicta.whisper.threads"
         static let beamSize = "dicta.whisper.beamSize"
         static let temperature = "dicta.whisper.temperature"
         static let bestOf = "dicta.whisper.bestOf"
         static let languageCode = "dicta.whisper.languageCode"
         static let customPrompt = "dicta.transcription.prompt"
+        static let enablePromptBias = "dicta.transcription.enablePromptBias"
         static let postProcessorReplacements = "dicta.postProcessor.replacements"
         static let postProcessorJSONPath = "dicta.postProcessor.jsonPath"
         static let smartPunctuationEnabled = "dicta.smartPunctuation.enabled"
@@ -380,12 +362,12 @@ final class SettingsModel: ObservableObject {
         var id: String { rawValue }
     }
 
-    static func presetDefaults(for preset: TranscriptionPreset) -> (beamSize: Int, temperature: Double, bestOf: Int) {
+    static func presetDefaults(for preset: TranscriptionPreset) -> (beamSize: Int, temperature: Double, bestOf: Int, modelTier: SpeechModelTier) {
         switch preset {
         case .accuracy:
-            return (beamSize: 5, temperature: 0.0, bestOf: 3)
+            return (beamSize: 5, temperature: 0.0, bestOf: 3, modelTier: .small)
         case .latency:
-            return (beamSize: 3, temperature: 0.1, bestOf: 1)
+            return (beamSize: 3, temperature: 0.1, bestOf: 1, modelTier: .base)
         }
     }
 

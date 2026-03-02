@@ -20,8 +20,14 @@ enum PhraseMapStore {
     }
 
     static func contextualStrings(settings: SettingsModel) -> [String] {
+        contextualTerms(settings: settings)
+    }
+
+    static func contextualTerms(settings: SettingsModel, limit: Int = 50) -> [String] {
         let merged = mergedMap(settings: settings)
-        let values = merged.values.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        let values = merged.values
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
         var deduped: [String: String] = [:]
         for value in values {
             let key = value.lowercased()
@@ -30,10 +36,23 @@ enum PhraseMapStore {
             }
         }
         let sorted = deduped.values.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
-        if sorted.count > 50 {
-            return Array(sorted.prefix(50))
+        return Array(sorted.prefix(max(0, limit)))
+    }
+
+    static func promptBiasString(settings: SettingsModel, maxTerms: Int = 50, maxLength: Int = 400) -> String {
+        let terms = contextualTerms(settings: settings, limit: maxTerms)
+        guard !terms.isEmpty else { return "" }
+        let prefix = "Proper nouns: "
+        var result: [String] = []
+        var currentLength = prefix.count
+        for term in terms {
+            let addition = result.isEmpty ? term.count : term.count + 2
+            if currentLength + addition > maxLength { break }
+            result.append(term)
+            currentLength += addition
         }
-        return sorted
+        guard !result.isEmpty else { return "" }
+        return prefix + result.joined(separator: ", ")
     }
 
     private static func merge(into target: inout [String: String], from source: [String: String]) {

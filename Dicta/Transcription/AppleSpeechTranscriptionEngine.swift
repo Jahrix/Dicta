@@ -166,17 +166,11 @@ final class AppleSpeechTranscriptionEngine: TranscriptionEngine {
     }
 
     private func extractLanguageCode(from locale: Locale) -> String? {
-        if #available(macOS 13, *) {
-            return locale.language.languageCode?.identifier
-        }
-        return locale.languageCode
+        locale.language.languageCode?.identifier
     }
 
     private func extractRegionCode(from locale: Locale) -> String? {
-        if #available(macOS 13, *) {
-            return locale.region?.identifier
-        }
-        return locale.regionCode
+        locale.region?.identifier
     }
 }
 

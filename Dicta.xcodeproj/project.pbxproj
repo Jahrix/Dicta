@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		334367C42F55C9DC004E23D0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 334367C32F55C9DC004E23D0 /* Assets.xcassets */; };
 		3901825C976A48309ECE609C /* FrontmostApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E7BF4B0A64048CFA10EA9B0 /* FrontmostApp.swift */; };
-		F60100000000000000000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = F80100000000000000000001 /* Sparkle */; };
 		E10101010101010101010101 /* DictaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10101010101010101010101 /* DictaApp.swift */; };
 		E10202020202020202020202 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10202020202020202020202 /* AppDelegate.swift */; };
 		E10303030303030303030303 /* DictationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10303030303030303030303 /* DictationController.swift */; };
@@ -16,28 +16,21 @@
 		E10505050505050505050505 /* StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10505050505050505050505 /* StatusItemController.swift */; };
 		E10606060606060606060606 /* Hotkey.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10606060606060606060606 /* Hotkey.swift */; };
 		E10707070707070707070707 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10707070707070707070707 /* HotkeyManager.swift */; };
-		F20100000000000000000001 /* Keybind.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000001 /* Keybind.swift */; };
-		F20100000000000000000002 /* HotkeyEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000002 /* HotkeyEngine.swift */; };
-		F20100000000000000000003 /* CarbonHotkeyEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000003 /* CarbonHotkeyEngine.swift */; };
-		F20100000000000000000004 /* EventTapHotkeyEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000004 /* EventTapHotkeyEngine.swift */; };
-		F20100000000000000000005 /* KeybindRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000005 /* KeybindRecorder.swift */; };
-		F20100000000000000000006 /* KeybindRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000006 /* KeybindRecorderView.swift */; };
 		E10808080808080808080808 /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10808080808080808080808 /* AudioRecorder.swift */; };
 		E10909090909090909090909 /* AudioSessionGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10909090909090909090909 /* AudioSessionGuard.swift */; };
 		E10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift */; };
 		E10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift */; };
 		E10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */; };
-		E10E3E3E3E3E3E3E3E3E3E3E /* LocalWhisperCppEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10E3E3E3E3E3E3E3E3E3E3E /* LocalWhisperCppEngine.swift */; };
-		E1A1A1A1A1A1A1A1A1A1A1A1 /* SpeechModelTier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A1A1A1A1A1A1A1A1A1A1A1 /* SpeechModelTier.swift */; };
-		E1A2A2A2A2A2A2A2A2A2A2A2 /* ModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A2A2A2A2A2A2A2A2A2A2A2 /* ModelCatalog.swift */; };
-		E10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift */; };
-		E10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift */; };
-		E10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift */; };
 		E10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift */; };
 		E10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift */; };
+		E10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift */; };
+		E10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift */; };
+		E10D4D4D4D4D4D4D4D4D4D4D /* AudioFormatConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D4D4D4D4D4D4D4D4D4D4D /* AudioFormatConverter.swift */; };
+		E10D5D5D5D5D5D5D5D5D5D5D /* WhisperCLIArgs.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D5D5D5D5D5D5D5D5D5D5D /* WhisperCLIArgs.swift */; };
 		E10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift */; };
+		E10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift */; };
+		E10E3E3E3E3E3E3E3E3E3E3E /* LocalWhisperCppEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10E3E3E3E3E3E3E3E3E3E3E /* LocalWhisperCppEngine.swift */; };
 		E10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift */; };
-		E1B1B1B1B1B1B1B1B1B1B1B1 /* PasteFailureNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1B1B1B1B1B1B1B1B1B1B1B1 /* PasteFailureNotifier.swift */; };
 		E11010101010101010101010 /* SettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11010101010101010101010 /* SettingsModel.swift */; };
 		E11111111111111111111111 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11111111111111111111111 /* SettingsView.swift */; };
 		E11212121212121212121212 /* HotkeyRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11212121212121212121212 /* HotkeyRecorderView.swift */; };
@@ -48,17 +41,27 @@
 		E11717171717171717171717 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11717171717171717171717 /* OnboardingView.swift */; };
 		E11818181818181818181818 /* DictationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11818181818181818181818 /* DictationState.swift */; };
 		E11919191919191919191919 /* HUDController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11919191919191919191919 /* HUDController.swift */; };
+		E13030303030303030303030 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D13030303030303030303030 /* NotificationPresenter.swift */; };
+		E1A1A1A1A1A1A1A1A1A1A1A1 /* SpeechModelTier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A1A1A1A1A1A1A1A1A1A1A1 /* SpeechModelTier.swift */; };
+		E1A2A2A2A2A2A2A2A2A2A2A2 /* ModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A2A2A2A2A2A2A2A2A2A2A2 /* ModelCatalog.swift */; };
+		E1B1B1B1B1B1B1B1B1B1B1B1 /* PasteFailureNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1B1B1B1B1B1B1B1B1B1B1B1 /* PasteFailureNotifier.swift */; };
+		F20100000000000000000001 /* Keybind.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000001 /* Keybind.swift */; };
+		F20100000000000000000002 /* HotkeyEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000002 /* HotkeyEngine.swift */; };
+		F20100000000000000000003 /* CarbonHotkeyEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000003 /* CarbonHotkeyEngine.swift */; };
+		F20100000000000000000004 /* EventTapHotkeyEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000004 /* EventTapHotkeyEngine.swift */; };
+		F20100000000000000000005 /* KeybindRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000005 /* KeybindRecorder.swift */; };
+		F20100000000000000000006 /* KeybindRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000006 /* KeybindRecorderView.swift */; };
 		F20100000000000000000007 /* PillHUDController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000007 /* PillHUDController.swift */; };
 		F20100000000000000000008 /* PillHUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000008 /* PillHUDView.swift */; };
 		F20100000000000000000009 /* WaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30100000000000000000009 /* WaveformView.swift */; };
 		F2010000000000000000000A /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3010000000000000000000A /* Theme.swift */; };
 		F2010000000000000000000B /* RoyalThemes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3010000000000000000000B /* RoyalThemes.swift */; };
 		F2010000000000000000000C /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3010000000000000000000C /* ThemeManager.swift */; };
-		E12020202020202020202020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D12020202020202020202020 /* Assets.xcassets */; };
-		E13030303030303030303030 /* NotificationPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D13030303030303030303030 /* NotificationPresenter.swift */; };
+		F60100000000000000000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = F80100000000000000000001 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		334367C32F55C9DC004E23D0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3E7BF4B0A64048CFA10EA9B0 /* FrontmostApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrontmostApp.swift; sourceTree = "<group>"; };
 		D10101010101010101010101 /* DictaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictaApp.swift; sourceTree = "<group>"; };
 		D10202020202020202020202 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -67,28 +70,21 @@
 		D10505050505050505050505 /* StatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemController.swift; sourceTree = "<group>"; };
 		D10606060606060606060606 /* Hotkey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hotkey.swift; sourceTree = "<group>"; };
 		D10707070707070707070707 /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
-		F30100000000000000000001 /* Keybind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keybind.swift; sourceTree = "<group>"; };
-		F30100000000000000000002 /* HotkeyEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyEngine.swift; sourceTree = "<group>"; };
-		F30100000000000000000003 /* CarbonHotkeyEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarbonHotkeyEngine.swift; sourceTree = "<group>"; };
-		F30100000000000000000004 /* EventTapHotkeyEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventTapHotkeyEngine.swift; sourceTree = "<group>"; };
-		F30100000000000000000005 /* KeybindRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeybindRecorder.swift; sourceTree = "<group>"; };
-		F30100000000000000000006 /* KeybindRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeybindRecorderView.swift; sourceTree = "<group>"; };
 		D10808080808080808080808 /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
 		D10909090909090909090909 /* AudioSessionGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSessionGuard.swift; sourceTree = "<group>"; };
 		D10A0A0A0A0A0A0A0A0A0A0A /* TranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionEngine.swift; sourceTree = "<group>"; };
 		D10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechTranscriptionEngine.swift; sourceTree = "<group>"; };
 		D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionResult.swift; sourceTree = "<group>"; };
-		D10E3E3E3E3E3E3E3E3E3E3E /* LocalWhisperCppEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalWhisperCppEngine.swift; sourceTree = "<group>"; };
-		D1A1A1A1A1A1A1A1A1A1A1A1 /* SpeechModelTier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechModelTier.swift; sourceTree = "<group>"; };
-		D1A2A2A2A2A2A2A2A2A2A2A2 /* ModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalog.swift; sourceTree = "<group>"; };
-		D10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechStreamingEngine.swift; sourceTree = "<group>"; };
-		D10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhraseMapStore.swift; sourceTree = "<group>"; };
-		D10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextPostProcessor.swift; sourceTree = "<group>"; };
 		D10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsertionManager.swift; sourceTree = "<group>"; };
 		D10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostProcessor.swift; sourceTree = "<group>"; };
+		D10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhraseMapStore.swift; sourceTree = "<group>"; };
+		D10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextPostProcessor.swift; sourceTree = "<group>"; };
+		D10D4D4D4D4D4D4D4D4D4D4D /* AudioFormatConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioFormatConverter.swift; sourceTree = "<group>"; };
+		D10D5D5D5D5D5D5D5D5D5D5D /* WhisperCLIArgs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperCLIArgs.swift; sourceTree = "<group>"; };
 		D10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteboardInserter.swift; sourceTree = "<group>"; };
+		D10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechStreamingEngine.swift; sourceTree = "<group>"; };
+		D10E3E3E3E3E3E3E3E3E3E3E /* LocalWhisperCppEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalWhisperCppEngine.swift; sourceTree = "<group>"; };
 		D10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityTyperInserter.swift; sourceTree = "<group>"; };
-		D1B1B1B1B1B1B1B1B1B1B1B1 /* PasteFailureNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteFailureNotifier.swift; sourceTree = "<group>"; };
 		D11010101010101010101010 /* SettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModel.swift; sourceTree = "<group>"; };
 		D11111111111111111111111 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		D11212121212121212121212 /* HotkeyRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorderView.swift; sourceTree = "<group>"; };
@@ -99,16 +95,24 @@
 		D11717171717171717171717 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		D11818181818181818181818 /* DictationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictationState.swift; sourceTree = "<group>"; };
 		D11919191919191919191919 /* HUDController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDController.swift; sourceTree = "<group>"; };
+		D12121212121212121212121 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D12222222222222222222222 /* Dicta.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = Dicta.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D13030303030303030303030 /* NotificationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPresenter.swift; sourceTree = "<group>"; };
+		D1A1A1A1A1A1A1A1A1A1A1A1 /* SpeechModelTier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechModelTier.swift; sourceTree = "<group>"; };
+		D1A2A2A2A2A2A2A2A2A2A2A2 /* ModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalog.swift; sourceTree = "<group>"; };
+		D1B1B1B1B1B1B1B1B1B1B1B1 /* PasteFailureNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteFailureNotifier.swift; sourceTree = "<group>"; };
+		F30100000000000000000001 /* Keybind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keybind.swift; sourceTree = "<group>"; };
+		F30100000000000000000002 /* HotkeyEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyEngine.swift; sourceTree = "<group>"; };
+		F30100000000000000000003 /* CarbonHotkeyEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarbonHotkeyEngine.swift; sourceTree = "<group>"; };
+		F30100000000000000000004 /* EventTapHotkeyEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventTapHotkeyEngine.swift; sourceTree = "<group>"; };
+		F30100000000000000000005 /* KeybindRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeybindRecorder.swift; sourceTree = "<group>"; };
+		F30100000000000000000006 /* KeybindRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeybindRecorderView.swift; sourceTree = "<group>"; };
 		F30100000000000000000007 /* PillHUDController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PillHUDController.swift; sourceTree = "<group>"; };
 		F30100000000000000000008 /* PillHUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PillHUDView.swift; sourceTree = "<group>"; };
 		F30100000000000000000009 /* WaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaveformView.swift; sourceTree = "<group>"; };
 		F3010000000000000000000A /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		F3010000000000000000000B /* RoyalThemes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoyalThemes.swift; sourceTree = "<group>"; };
 		F3010000000000000000000C /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeManager.swift; sourceTree = "<group>"; };
-		D12020202020202020202020 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		D12121212121212121212121 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		D12222222222222222222222 /* Dicta.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = Dicta.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D13030303030303030303030 /* NotificationPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPresenter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -198,6 +202,8 @@
 				D10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift */,
 				D10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift */,
 				D10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift */,
+				D10D4D4D4D4D4D4D4D4D4D4D /* AudioFormatConverter.swift */,
+				D10D5D5D5D5D5D5D5D5D5D5D /* WhisperCLIArgs.swift */,
 			);
 			path = Transcription;
 			sourceTree = "<group>";
@@ -242,16 +248,6 @@
 			path = Permissions;
 			sourceTree = "<group>";
 		};
-		F40100000000000000000001 /* Themes */ = {
-			isa = PBXGroup;
-			children = (
-				F3010000000000000000000A /* Theme.swift */,
-				F3010000000000000000000B /* RoyalThemes.swift */,
-				F3010000000000000000000C /* ThemeManager.swift */,
-			);
-			path = Themes;
-			sourceTree = "<group>";
-		};
 		C0C0C0C0C0C0C0C0C0C0C0C0 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
@@ -269,8 +265,8 @@
 		C1C1C1C1C1C1C1C1C1C1C1C1 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				D12020202020202020202020 /* Assets.xcassets */,
 				D12121212121212121212121 /* Info.plist */,
+				334367C32F55C9DC004E23D0 /* Assets.xcassets */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -281,6 +277,16 @@
 				D12222222222222222222222 /* Dicta.app */,
 			);
 			path = Products;
+			sourceTree = "<group>";
+		};
+		F40100000000000000000001 /* Themes */ = {
+			isa = PBXGroup;
+			children = (
+				F3010000000000000000000A /* Theme.swift */,
+				F3010000000000000000000B /* RoyalThemes.swift */,
+				F3010000000000000000000C /* ThemeManager.swift */,
+			);
+			path = Themes;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -341,23 +347,12 @@
 		};
 /* End PBXProject section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		F70100000000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/sparkle-project/Sparkle";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.9.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
 /* Begin PBXResourcesBuildPhase section */
 		A6A6A6A6A6A6A6A6A6A6A6A6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E12020202020202020202020 /* Assets.xcassets in Resources */,
+				334367C42F55C9DC004E23D0 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -393,6 +388,8 @@
 				E10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift in Sources */,
 				E10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift in Sources */,
 				E10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift in Sources */,
+				E10D4D4D4D4D4D4D4D4D4D4D /* AudioFormatConverter.swift in Sources */,
+				E10D5D5D5D5D5D5D5D5D5D5D /* WhisperCLIArgs.swift in Sources */,
 				E10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift in Sources */,
 				E10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift in Sources */,
 				E10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift in Sources */,
@@ -513,6 +510,17 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		F70100000000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		F80100000000000000000001 /* Sparkle */ = {
