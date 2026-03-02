@@ -335,34 +335,28 @@ final class DictationController: ObservableObject {
         do {
             let locale = Locale(identifier: languageIdentifier)
             let start = Date()
-            let useLocal = settings.transcriptionBackend == SettingsModel.TranscriptionBackend.localWhisperCpp.rawValue
             let rawText: String
-            if useLocal {
-                let modelOverride = settings.whisperModelPath.trimmingCharacters(in: .whitespacesAndNewlines)
-                let modelName = modelOverride.isEmpty ? "bundled/ggml-small.en.bin" : (modelOverride as NSString).lastPathComponent
-                logger.log(.transcription, "LocalASR start (file=\(url.lastPathComponent), model=\(modelName))")
-                do {
-                    rawText = try await withTimeout(seconds: timeout, timeoutError: TranscriptionError.timeout) {
-                        try await self.localTranscriptionEngine.transcribeFile(url: url,
-                                                                               locale: locale,
-                                                                               prompt: self.settings.customPrompt)
-                    }
-                    logger.log(.transcription, "LocalASR finish (length=\(rawText.count))")
-                } catch {
-                    let details = Self.detailedErrorDescription(error)
-                    logger.log(.transcription, "LocalASR failed: \(details). Falling back to AppleSpeech.")
+            let prompt = settings.effectivePrompt()
+            logger.log(.transcription, "Final transcription engine: local_whisper_cpp")
+            do {
+                rawText = try await withTimeout(seconds: timeout, timeoutError: TranscriptionError.timeout) {
+                    try await self.localTranscriptionEngine.transcribeFile(url: url,
+                                                                           locale: locale,
+                                                                           prompt: prompt)
+                }
+                logger.log(.transcription, "LocalASR finish (length=\(rawText.count))")
+            } catch {
+                let details = Self.detailedErrorDescription(error)
+                if shouldFallbackToAppleSpeech(for: error) {
+                    logger.log(.transcription, "Fallback to AppleSpeech: \(details)")
+                    logger.log(.transcription, "AppleSpeech start (file=\(url.lastPathComponent), locale=\(languageIdentifier), preferOnDevice=\(preferOnDevice))")
                     rawText = try await withTimeout(seconds: timeout, timeoutError: TranscriptionError.timeout) {
                         try await self.transcriptionEngine.transcribeFile(url: url,
                                                                          locale: locale,
-                                                                         prompt: self.settings.customPrompt)
+                                                                         prompt: prompt)
                     }
-                }
-            } else {
-                logger.log(.transcription, "AppleSpeech start (file=\(url.lastPathComponent), locale=\(languageIdentifier), preferOnDevice=\(preferOnDevice))")
-                rawText = try await withTimeout(seconds: timeout, timeoutError: TranscriptionError.timeout) {
-                    try await self.transcriptionEngine.transcribeFile(url: url,
-                                                                     locale: locale,
-                                                                     prompt: self.settings.customPrompt)
+                } else {
+                    throw error
                 }
             }
             let duration = Date().timeIntervalSince(start)
@@ -388,6 +382,19 @@ final class DictationController: ObservableObject {
                 self.fail("Transcription failed: \(error.localizedDescription)")
             }
         }
+    }
+
+    private func shouldFallbackToAppleSpeech(for error: Error) -> Bool {
+        if case TranscriptionError.timeout = error {
+            return false
+        }
+        if case TranscriptionError.noSpeechDetected = error {
+            return false
+        }
+        let description = (error as NSError).localizedDescription.lowercased()
+        return description.contains("local asr unavailable")
+            || description.contains("failed after retry")
+            || description.contains("wav conversion failed")
     }
 
     private func handleTranscriptionSuccess(_ result: TranscriptionResult) {
