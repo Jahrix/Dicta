@@ -41,6 +41,18 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             clean build
 
+      - name: Re-sign App Bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH="build/DerivedData/Build/Products/Release/Dicta.app"
+          if [[ ! -d "$APP_PATH" ]]; then
+            echo "Missing built app at $APP_PATH" >&2
+            exit 1
+          fi
+          codesign --force --deep --sign - "$APP_PATH"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+
       - name: Package App
         shell: bash
         run: |
