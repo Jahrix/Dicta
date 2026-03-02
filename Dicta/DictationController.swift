@@ -15,6 +15,7 @@ final class DictationController: ObservableObject {
 
     private let audioRecorder: AudioRecorder
     private let transcriptionEngine: TranscriptionEngine
+    private let localTranscriptionEngine: TranscriptionEngine
     private let streamingEngine: TranscriptionEngine
     private let insertionManager: InsertionManager
     private let hudController = HUDController()
@@ -38,6 +39,10 @@ final class DictationController: ObservableObject {
     private var streamingFinalContinuation: CheckedContinuation<String?, Never>?
     private var lastPartialHUDUpdate = Date.distantPast
     private var lastPartialText: String = ""
+
+    private var shouldUseStreaming: Bool {
+        settings.streamingEnabled && settings.partialWindowSeconds > 0 && streamingEngine.supportsStreaming
+    }
     private var startRequestID: UUID?
     private let watchdogQueue = DispatchQueue(label: "com.dicta.watchdog", qos: .utility)
     private var watchdogTimer: DispatchSourceTimer?
@@ -53,6 +58,7 @@ final class DictationController: ObservableObject {
         self.logger = logger
         self.audioRecorder = AudioRecorder(logger: logger)
         self.transcriptionEngine = AppleSpeechTranscriptionEngine(settings: settings, logger: logger)
+        self.localTranscriptionEngine = LocalWhisperCppEngine(settings: settings, logger: logger)
         self.streamingEngine = AppleSpeechStreamingEngine(settings: settings, logger: logger)
         self.insertionManager = InsertionManager(
             pasteboardInserter: PasteboardInserter(logger: logger),
@@ -173,7 +179,9 @@ final class DictationController: ObservableObject {
                 self.transition(to: .recording(startedAt: Date()), reason: "Recording started")
                 self.startMaxRecordingTimer()
                 self.startNoFramesCheck()
-                self.startStreamingSession()
+                if self.shouldUseStreaming {
+                    self.startStreamingSession()
+                }
                 self.updateHUD(for: self.state)
             }
         } catch {
@@ -208,7 +216,9 @@ final class DictationController: ObservableObject {
         partialTask?.cancel()
         if shouldUseStreaming {
             let fileName = sessionRecordingURL?.lastPathComponent ?? "n/a"
-            logger.log(.transcription, "Partial transcribe finish (windowSeconds=0, file=\(fileName))")
+            let windowSeconds = settings.partialWindowSeconds
+            let windowText = String(format: "%.2f", windowSeconds)
+            logger.log(.transcription, "Partial transcribe finish (windowSeconds=\(windowText), file=\(fileName))")
         }
         logger.log(.audio, "Stop recording requested: \(reason)")
         transition(to: .stopping, reason: reason)
@@ -264,13 +274,37 @@ final class DictationController: ObservableObject {
 
     private func performTranscription(url: URL, languageIdentifier: String, preferOnDevice: Bool, timeout: Double, recordingDuration: TimeInterval) async {
         do {
-            logger.log(.transcription, "Transcription started for \(url.lastPathComponent) (locale: \(languageIdentifier), preferOnDevice: \(preferOnDevice))")
             let locale = Locale(identifier: languageIdentifier)
             let start = Date()
-            let rawText = try await withTimeout(seconds: timeout, timeoutError: TranscriptionError.timeout) {
-                try await self.transcriptionEngine.transcribeFile(url: url,
-                                                                 locale: locale,
-                                                                 prompt: self.settings.customPrompt)
+            let useLocal = settings.transcriptionBackend == SettingsModel.TranscriptionBackend.localWhisperCpp.rawValue
+            let rawText: String
+            if useLocal {
+                let modelOverride = settings.whisperModelPath.trimmingCharacters(in: .whitespacesAndNewlines)
+                let modelName = modelOverride.isEmpty ? "bundled/ggml-small.en.bin" : (modelOverride as NSString).lastPathComponent
+                logger.log(.transcription, "LocalASR start (file=\(url.lastPathComponent), model=\(modelName))")
+                do {
+                    rawText = try await withTimeout(seconds: timeout, timeoutError: TranscriptionError.timeout) {
+                        try await self.localTranscriptionEngine.transcribeFile(url: url,
+                                                                               locale: locale,
+                                                                               prompt: self.settings.customPrompt)
+                    }
+                    logger.log(.transcription, "LocalASR finish (length=\(rawText.count))")
+                } catch {
+                    let details = Self.detailedErrorDescription(error)
+                    logger.log(.transcription, "LocalASR failed: \(details). Falling back to AppleSpeech.")
+                    rawText = try await withTimeout(seconds: timeout, timeoutError: TranscriptionError.timeout) {
+                        try await self.transcriptionEngine.transcribeFile(url: url,
+                                                                         locale: locale,
+                                                                         prompt: self.settings.customPrompt)
+                    }
+                }
+            } else {
+                logger.log(.transcription, "AppleSpeech start (file=\(url.lastPathComponent), locale=\(languageIdentifier), preferOnDevice=\(preferOnDevice))")
+                rawText = try await withTimeout(seconds: timeout, timeoutError: TranscriptionError.timeout) {
+                    try await self.transcriptionEngine.transcribeFile(url: url,
+                                                                     locale: locale,
+                                                                     prompt: self.settings.customPrompt)
+                }
             }
             let duration = Date().timeIntervalSince(start)
             await MainActor.run {
@@ -393,13 +427,20 @@ final class DictationController: ObservableObject {
     }
 
     private func startStreamingSession() {
+        let windowSeconds = settings.partialWindowSeconds
+        if windowSeconds <= 0 {
+            partialsBlocked = true
+            logger.log(.transcription, "partials disabled: invalid windowSeconds")
+            return
+        }
         streamingFailed = false
         streamingFinalText = nil
         streamingFinalContinuation = nil
         lastPartialText = ""
         lastPartialHUDUpdate = Date.distantPast
         let fileName = sessionRecordingURL?.lastPathComponent ?? "n/a"
-        logger.log(.transcription, "Partial transcribe start (windowSeconds=0, file=\(fileName))")
+        let windowText = String(format: "%.2f", windowSeconds)
+        logger.log(.transcription, "Partial transcribe start (windowSeconds=\(windowText), file=\(fileName))")
 
         let locale = Locale(identifier: settings.languageIdentifier)
         let contextualStrings = PhraseMapStore.contextualStrings(settings: settings)
@@ -437,14 +478,15 @@ final class DictationController: ObservableObject {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         let now = Date()
-        if now.timeIntervalSince(lastPartialHUDUpdate) < 0.12, trimmed == lastPartialText {
+        let interval = max(0.1, settings.partialIntervalSeconds)
+        if now.timeIntervalSince(lastPartialHUDUpdate) < interval, trimmed == lastPartialText {
             return
         }
         lastPartialHUDUpdate = now
         lastPartialText = trimmed
         partialTask?.cancel()
         partialTask = Task { @MainActor in
-            guard !Task.isCancelled, self.state == .recording, !self.partialsBlocked else { return }
+            guard !Task.isCancelled, case .recording = self.state, !self.partialsBlocked else { return }
             self.partialText = trimmed
             self.logger.log(.transcription, "Streaming partial (length: \(trimmed.count))", verbose: true)
             self.hudController.show(text: trimmed, mode: .listening)

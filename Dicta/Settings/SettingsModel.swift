@@ -10,6 +10,10 @@ final class SettingsModel: ObservableObject {
     @Published var transcriptionBackend: String { didSet { defaults.set(transcriptionBackend, forKey: Keys.transcriptionBackend) } }
     @Published var whisperBinaryPath: String { didSet { defaults.set(whisperBinaryPath, forKey: Keys.whisperBinaryPath) } }
     @Published var whisperModelPath: String { didSet { defaults.set(whisperModelPath, forKey: Keys.whisperModelPath) } }
+    @Published var beamSize: Int { didSet { defaults.set(beamSize, forKey: Keys.beamSize) } }
+    @Published var temperature: Double { didSet { defaults.set(temperature, forKey: Keys.temperature) } }
+    @Published var bestOf: Int { didSet { defaults.set(bestOf, forKey: Keys.bestOf) } }
+    @Published var languageCode: String { didSet { defaults.set(languageCode, forKey: Keys.languageCode) } }
     @Published var customPrompt: String { didSet { defaults.set(customPrompt, forKey: Keys.customPrompt) } }
     @Published var postProcessorReplacements: [String: String] { didSet { savePostProcessorReplacements() } }
     @Published var postProcessorJSONPath: String { didSet { defaults.set(postProcessorJSONPath, forKey: Keys.postProcessorJSONPath) } }
@@ -18,6 +22,9 @@ final class SettingsModel: ObservableObject {
     @Published var phraseMapEnabled: Bool { didSet { defaults.set(phraseMapEnabled, forKey: Keys.phraseMapEnabled) } }
     @Published var phraseMap: [String: String] { didSet { savePhraseMap() } }
     @Published var spokenPunctuationEnabled: Bool { didSet { defaults.set(spokenPunctuationEnabled, forKey: Keys.spokenPunctuationEnabled) } }
+    @Published var partialWindowSeconds: Double { didSet { defaults.set(partialWindowSeconds, forKey: Keys.partialWindowSeconds) } }
+    @Published var partialIntervalSeconds: Double { didSet { defaults.set(partialIntervalSeconds, forKey: Keys.partialIntervalSeconds) } }
+    @Published var streamingEnabled: Bool { didSet { defaults.set(streamingEnabled, forKey: Keys.streamingEnabled) } }
     @Published var maxRecordingSeconds: Double { didSet { defaults.set(maxRecordingSeconds, forKey: Keys.maxRecordingSeconds) } }
     @Published var transcriptionTimeoutSeconds: Double { didSet { defaults.set(transcriptionTimeoutSeconds, forKey: Keys.transcriptionTimeoutSeconds) } }
     @Published var insertionTimeoutSeconds: Double { didSet { defaults.set(insertionTimeoutSeconds, forKey: Keys.insertionTimeoutSeconds) } }
@@ -42,6 +49,10 @@ final class SettingsModel: ObservableObject {
             Keys.transcriptionBackend: TranscriptionBackend.localWhisperCpp.rawValue,
             Keys.whisperBinaryPath: "",
             Keys.whisperModelPath: "",
+            Keys.beamSize: 5,
+            Keys.temperature: 0.1,
+            Keys.bestOf: 3,
+            Keys.languageCode: "en",
             Keys.customPrompt: "",
             Keys.postProcessorReplacements: Data(),
             Keys.postProcessorJSONPath: "",
@@ -50,8 +61,11 @@ final class SettingsModel: ObservableObject {
             Keys.phraseMapEnabled: true,
             Keys.phraseMapData: Self.encodePhraseMap(PhraseMapStore.builtInMap),
             Keys.spokenPunctuationEnabled: true,
+            Keys.partialWindowSeconds: 4.0,
+            Keys.partialIntervalSeconds: 1.8,
+            Keys.streamingEnabled: false,
             Keys.maxRecordingSeconds: 60.0,
-            Keys.transcriptionTimeoutSeconds: 20.0,
+            Keys.transcriptionTimeoutSeconds: 30.0,
             Keys.insertionTimeoutSeconds: 2.0,
             Keys.silenceTimeoutSeconds: 3.0,
             Keys.noFramesTimeoutSeconds: 0.5,
@@ -71,6 +85,10 @@ final class SettingsModel: ObservableObject {
         let transcriptionBackendValue = defaults.string(forKey: Keys.transcriptionBackend) ?? TranscriptionBackend.localWhisperCpp.rawValue
         let whisperBinaryPathValue = defaults.string(forKey: Keys.whisperBinaryPath) ?? ""
         let whisperModelPathValue = defaults.string(forKey: Keys.whisperModelPath) ?? ""
+        let beamSizeValue = max(1, defaults.integer(forKey: Keys.beamSize))
+        let temperatureValue = min(max(defaults.double(forKey: Keys.temperature), 0.0), 1.0)
+        let bestOfValue = max(1, defaults.integer(forKey: Keys.bestOf))
+        let languageCodeValue = defaults.string(forKey: Keys.languageCode) ?? "en"
         let customPromptValue = defaults.string(forKey: Keys.customPrompt) ?? ""
         let postProcessorReplacementsValue = Self.decodePostProcessorReplacements(from: defaults.data(forKey: Keys.postProcessorReplacements))
         let postProcessorJSONPathValue = defaults.string(forKey: Keys.postProcessorJSONPath) ?? ""
@@ -78,6 +96,9 @@ final class SettingsModel: ObservableObject {
         let minWordsForAutoPeriodValue = max(1, defaults.integer(forKey: Keys.minWordsForAutoPeriod))
         let phraseMapEnabledValue = defaults.bool(forKey: Keys.phraseMapEnabled)
         let spokenPunctuationEnabledValue = defaults.bool(forKey: Keys.spokenPunctuationEnabled)
+        let partialWindowSecondsValue = defaults.double(forKey: Keys.partialWindowSeconds)
+        let partialIntervalSecondsValue = defaults.double(forKey: Keys.partialIntervalSeconds)
+        let streamingEnabledValue = defaults.bool(forKey: Keys.streamingEnabled)
         var phraseMapValue = Self.decodePhraseMap(from: defaults.data(forKey: Keys.phraseMapData))
         var shouldSavePhraseMap = false
         if phraseMapValue.isEmpty {
@@ -98,6 +119,10 @@ final class SettingsModel: ObservableObject {
         transcriptionBackend = transcriptionBackendValue
         whisperBinaryPath = whisperBinaryPathValue
         whisperModelPath = whisperModelPathValue
+        beamSize = beamSizeValue
+        temperature = temperatureValue
+        bestOf = bestOfValue
+        languageCode = languageCodeValue.isEmpty ? "en" : languageCodeValue
         customPrompt = customPromptValue
         postProcessorReplacements = postProcessorReplacementsValue
         postProcessorJSONPath = postProcessorJSONPathValue
@@ -106,6 +131,9 @@ final class SettingsModel: ObservableObject {
         phraseMapEnabled = phraseMapEnabledValue
         phraseMap = phraseMapValue
         spokenPunctuationEnabled = spokenPunctuationEnabledValue
+        partialWindowSeconds = partialWindowSecondsValue
+        partialIntervalSeconds = partialIntervalSecondsValue
+        streamingEnabled = streamingEnabledValue
         maxRecordingSeconds = defaults.double(forKey: Keys.maxRecordingSeconds)
         transcriptionTimeoutSeconds = defaults.double(forKey: Keys.transcriptionTimeoutSeconds)
         insertionTimeoutSeconds = defaults.double(forKey: Keys.insertionTimeoutSeconds)
@@ -150,6 +178,10 @@ final class SettingsModel: ObservableObject {
         static let transcriptionBackend = "dicta.transcription.backend"
         static let whisperBinaryPath = "dicta.whisper.binaryPath"
         static let whisperModelPath = "dicta.whisper.modelPath"
+        static let beamSize = "dicta.whisper.beamSize"
+        static let temperature = "dicta.whisper.temperature"
+        static let bestOf = "dicta.whisper.bestOf"
+        static let languageCode = "dicta.whisper.languageCode"
         static let customPrompt = "dicta.transcription.prompt"
         static let postProcessorReplacements = "dicta.postProcessor.replacements"
         static let postProcessorJSONPath = "dicta.postProcessor.jsonPath"
@@ -158,6 +190,9 @@ final class SettingsModel: ObservableObject {
         static let phraseMapEnabled = "dicta.phraseMap.enabled"
         static let phraseMapData = "dicta.phraseMap.data"
         static let spokenPunctuationEnabled = "dicta.spokenPunctuation.enabled"
+        static let partialWindowSeconds = "dicta.partial.windowSeconds"
+        static let partialIntervalSeconds = "dicta.partial.intervalSeconds"
+        static let streamingEnabled = "dicta.streaming.enabled"
         static let maxRecordingSeconds = "dicta.maxRecordingSeconds"
         static let transcriptionTimeoutSeconds = "dicta.transcriptionTimeoutSeconds"
         static let insertionTimeoutSeconds = "dicta.insertionTimeoutSeconds"

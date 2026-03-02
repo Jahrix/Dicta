@@ -1,8 +1,11 @@
 import Foundation
 
+@MainActor
 final class LocalWhisperCppEngine: TranscriptionEngine {
     private let settings: SettingsModel
     private let logger: DiagnosticsLogger
+    private static var cachedSupportedFlags: [String: SupportedFlags] = [:]
+    private let cacheLock = NSLock()
 
     init(settings: SettingsModel, logger: DiagnosticsLogger) {
         self.settings = settings
@@ -17,7 +20,9 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
     func transcribeFile(url: URL, locale: Locale, prompt: String) async throws -> String {
         let binaryPath = try resolveBinaryPath()
         let modelPath = try resolveModelPath()
-        let timeoutSeconds = settings.transcriptionTimeoutSeconds > 0 ? settings.transcriptionTimeoutSeconds : 20.0
+        let finalTimeoutSeconds = settings.transcriptionTimeoutSeconds > 0 ? settings.transcriptionTimeoutSeconds : 30.0
+        let partialTimeoutSeconds = min(15.0, finalTimeoutSeconds)
+        let supportedFlags = await loadSupportedFlags(binaryPath: binaryPath, timeoutSeconds: partialTimeoutSeconds)
 
         logger.log(.transcription, "LocalWhisper start (binary: \(binaryPath), model: \(modelPath), locale: \(locale.identifier))")
 
@@ -30,11 +35,28 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
         process.currentDirectoryURL = tempDir
 
         var arguments = ["-m", modelPath, "-f", url.path, "-nt"]
+        let language = settings.languageCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let flag = supportedFlags.languageFlag, !language.isEmpty {
+            arguments.append(contentsOf: [flag, language])
+        }
+        let beamSize = max(1, settings.beamSize)
+        if let flag = supportedFlags.beamSizeFlag {
+            arguments.append(contentsOf: [flag, String(beamSize)])
+        }
+        let temperature = min(max(settings.temperature, 0.0), 1.0)
+        if let flag = supportedFlags.temperatureFlag {
+            arguments.append(contentsOf: [flag, String(temperature)])
+        }
+        let bestOf = max(1, settings.bestOf)
+        if let flag = supportedFlags.bestOfFlag {
+            arguments.append(contentsOf: [flag, String(bestOf)])
+        }
         let trimmedPrompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedPrompt.isEmpty {
-            arguments.append(contentsOf: ["-p", trimmedPrompt])
+        if let flag = supportedFlags.promptFlag, !trimmedPrompt.isEmpty {
+            arguments.append(contentsOf: [flag, trimmedPrompt])
         }
         process.arguments = arguments
+        logger.log(.transcription, "LocalWhisper args: \(redactedArguments(arguments))")
 
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
@@ -48,7 +70,7 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
         }
 
         do {
-            let output = try await withTimeout(seconds: timeoutSeconds, timeoutError: TranscriptionError.timeout) {
+            let output = try await withTimeout(seconds: finalTimeoutSeconds, timeoutError: TranscriptionError.timeout) {
                 process.waitUntilExit()
                 let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
                 let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
@@ -125,6 +147,102 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
         let message = "Local whisper model not found. Expected bundled Resources/models/ggml-small.en.bin. Set SettingsModel.whisperModelPath to override."
         logger.log(.transcription, message)
         throw TranscriptionError.underlying(message)
+    }
+
+    private struct SupportedFlags {
+        let beamSizeFlag: String?
+        let temperatureFlag: String?
+        let bestOfFlag: String?
+        let languageFlag: String?
+        let promptFlag: String?
+    }
+
+    private func loadSupportedFlags(binaryPath: String, timeoutSeconds: Double) async -> SupportedFlags {
+        cacheLock.lock()
+        if let cached = Self.cachedSupportedFlags[binaryPath] {
+            cacheLock.unlock()
+            return cached
+        }
+        cacheLock.unlock()
+
+        let helpOutput = await readHelpOutput(binaryPath: binaryPath, timeoutSeconds: timeoutSeconds)
+        let lower = helpOutput?.lowercased() ?? ""
+
+        let beamFlag = lower.contains("beam-size") ? "--beam-size" : (lower.contains(" -b ") || lower.contains("\n-b ") ? "-b" : nil)
+        let tempFlag = lower.contains("temperature") ? "--temperature" : nil
+        let bestOfFlag = lower.contains("best-of") ? "--best-of" : nil
+        let languageFlag = lower.contains("--language") ? "--language" : (lower.contains(" -l ") || lower.contains("\n-l ") ? "-l" : nil)
+        let promptFlag = lower.contains("--prompt") ? "--prompt" : (lower.contains(" -p ") || lower.contains("\n-p ") ? "-p" : nil)
+
+        let supported = SupportedFlags(beamSizeFlag: beamFlag,
+                                       temperatureFlag: tempFlag,
+                                       bestOfFlag: bestOfFlag,
+                                       languageFlag: languageFlag,
+                                       promptFlag: promptFlag)
+        cacheLock.lock()
+        Self.cachedSupportedFlags[binaryPath] = supported
+        cacheLock.unlock()
+        return supported
+    }
+
+    private func readHelpOutput(binaryPath: String, timeoutSeconds: Double) async -> String? {
+        let attempts = [["--help"], ["-h"]]
+        for args in attempts {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: binaryPath)
+            process.arguments = args
+            let stdoutPipe = Pipe()
+            let stderrPipe = Pipe()
+            process.standardOutput = stdoutPipe
+            process.standardError = stderrPipe
+            do {
+                try process.run()
+            } catch {
+                continue
+            }
+
+            let output = try? await withTimeout(seconds: timeoutSeconds, timeoutError: TranscriptionError.timeout) {
+                process.waitUntilExit()
+                let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+                let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+                let stdoutText = String(data: stdoutData, encoding: .utf8) ?? ""
+                let stderrText = String(data: stderrData, encoding: .utf8) ?? ""
+                return stdoutText + "\n" + stderrText
+            }
+            if process.isRunning {
+                process.terminate()
+            }
+            if let output, !output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return output
+            }
+        }
+        return nil
+    }
+
+    private func redactedArguments(_ args: [String]) -> String {
+        var output: [String] = []
+        var redactNext: String?
+        for arg in args {
+            if let redact = redactNext {
+                output.append(redact)
+                redactNext = nil
+                continue
+            }
+            switch arg {
+            case "-m":
+                output.append(arg)
+                redactNext = "<model>"
+            case "-f":
+                output.append(arg)
+                redactNext = "<audio>"
+            case "-p", "--prompt":
+                output.append(arg)
+                redactNext = "<prompt>"
+            default:
+                output.append(arg)
+            }
+        }
+        return output.joined(separator: " ")
     }
 
     private func withTimeout<T>(seconds: Double, timeoutError: Error, operation: @escaping () throws -> T) async throws -> T {
