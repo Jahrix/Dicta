@@ -21,6 +21,8 @@
 		E10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift */; };
 		E10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */; };
 		E10E3E3E3E3E3E3E3E3E3E3E /* LocalWhisperCppEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10E3E3E3E3E3E3E3E3E3E3E /* LocalWhisperCppEngine.swift */; };
+		E1A1A1A1A1A1A1A1A1A1A1A1 /* SpeechModelTier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A1A1A1A1A1A1A1A1A1A1A1 /* SpeechModelTier.swift */; };
+		E1A2A2A2A2A2A2A2A2A2A2A2 /* ModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1A2A2A2A2A2A2A2A2A2A2A2 /* ModelCatalog.swift */; };
 		E10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift */; };
 		E10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift */; };
 		E10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift */; };
@@ -28,6 +30,7 @@
 		E10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift */; };
 		E10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift */; };
 		E10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift */; };
+		E1B1B1B1B1B1B1B1B1B1B1B1 /* PasteFailureNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1B1B1B1B1B1B1B1B1B1B1B1 /* PasteFailureNotifier.swift */; };
 		E11010101010101010101010 /* SettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11010101010101010101010 /* SettingsModel.swift */; };
 		E11111111111111111111111 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11111111111111111111111 /* SettingsView.swift */; };
 		E11212121212121212121212 /* HotkeyRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11212121212121212121212 /* HotkeyRecorderView.swift */; };
@@ -57,6 +60,8 @@
 		D10B0B0B0B0B0B0B0B0B0B0B /* AppleSpeechTranscriptionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechTranscriptionEngine.swift; sourceTree = "<group>"; };
 		D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionResult.swift; sourceTree = "<group>"; };
 		D10E3E3E3E3E3E3E3E3E3E3E /* LocalWhisperCppEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalWhisperCppEngine.swift; sourceTree = "<group>"; };
+		D1A1A1A1A1A1A1A1A1A1A1A1 /* SpeechModelTier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechModelTier.swift; sourceTree = "<group>"; };
+		D1A2A2A2A2A2A2A2A2A2A2A2 /* ModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalog.swift; sourceTree = "<group>"; };
 		D10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSpeechStreamingEngine.swift; sourceTree = "<group>"; };
 		D10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhraseMapStore.swift; sourceTree = "<group>"; };
 		D10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextPostProcessor.swift; sourceTree = "<group>"; };
@@ -64,6 +69,7 @@
 		D10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostProcessor.swift; sourceTree = "<group>"; };
 		D10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteboardInserter.swift; sourceTree = "<group>"; };
 		D10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityTyperInserter.swift; sourceTree = "<group>"; };
+		D1B1B1B1B1B1B1B1B1B1B1B1 /* PasteFailureNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasteFailureNotifier.swift; sourceTree = "<group>"; };
 		D11010101010101010101010 /* SettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModel.swift; sourceTree = "<group>"; };
 		D11111111111111111111111 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		D11212121212121212121212 /* HotkeyRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyRecorderView.swift; sourceTree = "<group>"; };
@@ -154,6 +160,8 @@
 				D10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift */,
 				D10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift */,
 				D10E3E3E3E3E3E3E3E3E3E3E /* LocalWhisperCppEngine.swift */,
+				D1A2A2A2A2A2A2A2A2A2A2A2 /* ModelCatalog.swift */,
+				D1A1A1A1A1A1A1A1A1A1A1A1 /* SpeechModelTier.swift */,
 				D10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift */,
 				D10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift */,
 				D10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift */,
@@ -167,6 +175,7 @@
 				D10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift */,
 				D10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift */,
 				D10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift */,
+				D1B1B1B1B1B1B1B1B1B1B1B1 /* PasteFailureNotifier.swift */,
 			);
 			path = Insertion;
 			sourceTree = "<group>";
@@ -310,12 +319,15 @@
 				E10E2E2E2E2E2E2E2E2E2E2E /* AppleSpeechStreamingEngine.swift in Sources */,
 				E10C0C0C0C0C0C0C0C0C0C0C /* TranscriptionResult.swift in Sources */,
 				E10E3E3E3E3E3E3E3E3E3E3E /* LocalWhisperCppEngine.swift in Sources */,
+				E1A2A2A2A2A2A2A2A2A2A2A2 /* ModelCatalog.swift in Sources */,
+				E1A1A1A1A1A1A1A1A1A1A1A1 /* SpeechModelTier.swift in Sources */,
 				E10D1D1D1D1D1D1D1D1D1D1D /* PostProcessor.swift in Sources */,
 				E10D2D2D2D2D2D2D2D2D2D2D /* PhraseMapStore.swift in Sources */,
 				E10D3D3D3D3D3D3D3D3D3D3D /* TextPostProcessor.swift in Sources */,
 				E10D0D0D0D0D0D0D0D0D0D0D /* InsertionManager.swift in Sources */,
 				E10E0E0E0E0E0E0E0E0E0E0E /* PasteboardInserter.swift in Sources */,
 				E10F0F0F0F0F0F0F0F0F0F0F /* AccessibilityTyperInserter.swift in Sources */,
+				E1B1B1B1B1B1B1B1B1B1B1B1 /* PasteFailureNotifier.swift in Sources */,
 				E11010101010101010101010 /* SettingsModel.swift in Sources */,
 				E11111111111111111111111 /* SettingsView.swift in Sources */,
 				E11212121212121212121212 /* HotkeyRecorderView.swift in Sources */,

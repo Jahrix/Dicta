@@ -5,7 +5,6 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
     private let settings: SettingsModel
     private let logger: DiagnosticsLogger
     private static var cachedSupportedFlags: [String: SupportedFlags] = [:]
-    private let cacheLock = NSLock()
 
     init(settings: SettingsModel, logger: DiagnosticsLogger) {
         self.settings = settings
@@ -32,7 +31,7 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
         let bestOf = settings.bestOf > 0 ? settings.bestOf : presetDefaults.bestOf
         let binaryLabel = redactedPath(binaryPath)
         let modelLabel = redactedPath(modelPath)
-        logger.log(.transcription, "LocalWhisper preset=\(preset.rawValue) beam=\(beamSize) temp=\(String(format: \"%.2f\", temperature)) bestOf=\(bestOf) model=\(modelLabel) binary=\(binaryLabel) locale=\(locale.identifier)")
+        logger.log(.transcription, "LocalWhisper preset=\(preset.rawValue) beam=\(beamSize) temp=\(String(format: "%.2f", temperature)) bestOf=\(bestOf) model=\(modelLabel) binary=\(binaryLabel) locale=\(locale.identifier)")
 
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("DictaWhisper-\(UUID().uuidString)", isDirectory: true)
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -177,12 +176,9 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
     }
 
     private func loadSupportedFlags(binaryPath: String, timeoutSeconds: Double) async -> SupportedFlags {
-        cacheLock.lock()
         if let cached = Self.cachedSupportedFlags[binaryPath] {
-            cacheLock.unlock()
             return cached
         }
-        cacheLock.unlock()
 
         let helpOutput = await readHelpOutput(binaryPath: binaryPath, timeoutSeconds: timeoutSeconds)
         let lower = helpOutput?.lowercased() ?? ""
@@ -198,9 +194,7 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
                                        bestOfFlag: bestOfFlag,
                                        languageFlag: languageFlag,
                                        promptFlag: promptFlag)
-        cacheLock.lock()
         Self.cachedSupportedFlags[binaryPath] = supported
-        cacheLock.unlock()
         return supported
     }
 

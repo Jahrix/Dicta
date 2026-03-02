@@ -113,9 +113,12 @@ final class DictationController: ObservableObject {
     }
 
     func insert(text: String) async throws {
-        try await insertionManager.insert(text: text,
-                                          mode: settings.insertionMode,
-                                          restoreClipboard: settings.restoreClipboard)
+        let result = await insertionManager.insert(text: text,
+                                                   mode: settings.insertionMode,
+                                                   restoreClipboard: settings.restoreClipboard)
+        if case .failed(let error) = result {
+            throw error
+        }
     }
 
     private func startRecordingFlow() {
@@ -361,17 +364,33 @@ final class DictationController: ObservableObject {
             guard let self else { return }
             do {
                 self.logger.log(.insertion, "Insertion started (mode: \(insertionMode.rawValue), chars: \(processedText.count))")
-                try await self.withTimeout(seconds: insertionTimeout, timeoutError: InsertionError.timeout) {
-                    try await self.insertionManager.insert(text: processedText,
-                                                          mode: insertionMode,
-                                                          restoreClipboard: restoreClipboard)
+                let result = try await self.withTimeout(seconds: insertionTimeout, timeoutError: InsertionError.timeout) {
+                    await self.insertionManager.insert(text: processedText,
+                                                       mode: insertionMode,
+                                                       restoreClipboard: restoreClipboard)
                 }
-                await MainActor.run {
-                    self.lastInsertionResult = "success"
-                    self.transition(to: .idle, reason: "Insertion complete")
-                    self.updateHUD(for: .idle)
+                switch result {
+                case .failed(let error):
+                    throw error
+                case .pasted:
+                    await MainActor.run {
+                        self.lastInsertionResult = "pasted"
+                        self.transition(to: .idle, reason: "Insertion complete")
+                        self.updateHUD(for: .idle)
+                    }
+                case .attempted:
+                    await MainActor.run {
+                        self.lastInsertionResult = "attempted"
+                        self.transition(to: .idle, reason: "Insertion complete (attempted)")
+                        self.updateHUD(for: .idle)
+                    }
+                case .clipboardOnly:
+                    await MainActor.run {
+                        self.lastInsertionResult = "clipboard-only"
+                        self.transition(to: .idle, reason: "Insertion complete (clipboard only)")
+                        self.updateHUD(for: .idle)
+                    }
                 }
-                self.logger.log(.insertion, "Insertion completed successfully")
             } catch {
                 if Task.isCancelled {
                     self.logger.log(.insertion, "Insertion cancelled")

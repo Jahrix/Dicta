@@ -4,7 +4,6 @@ import ApplicationServices
 
 final class PasteboardInserter: TextInserter {
     private let logger: DiagnosticsLogger
-    private static var didNotifyAccessibilityMissing = false
 
     init(logger: DiagnosticsLogger) {
         self.logger = logger
@@ -41,24 +40,28 @@ final class PasteboardInserter: TextInserter {
         try await Task.sleep(nanoseconds: 200_000_000)
 
         guard let frontmost = NSWorkspace.shared.frontmostApplication else {
-            NotificationPresenter.shared.notify(title: "Dicta Insert Failed", body: "No focused app to paste into.")
-            throw InsertionError.noFocusedApp
+            logger.log(.insertion, "Auto-paste unavailable: no focused app (clipboard-only)")
+            PasteFailureNotifier.shared.notifyClipboardOnlyOnce()
+            throw InsertionError.clipboardOnly
         }
         if frontmost.bundleIdentifier == Bundle.main.bundleIdentifier {
-            NotificationPresenter.shared.notify(title: "Dicta Insert Failed", body: "Dicta is frontmost; cannot paste.")
-            throw InsertionError.frontmostIsDicta
+            logger.log(.insertion, "Auto-paste unavailable: Dicta is frontmost (clipboard-only)")
+            PasteFailureNotifier.shared.notifyClipboardOnlyOnce()
+            throw InsertionError.clipboardOnly
         }
 
         let axTrusted = AXIsProcessTrusted()
         logger.log(.insertion, "AX trust: \(axTrusted ? "granted" : "not granted")")
         guard axTrusted else {
             logger.log(.insertion, "Auto-paste unavailable: Accessibility not granted (clipboard-only)")
-            notifyAccessibilityMissingOnce()
+            PasteFailureNotifier.shared.notifyClipboardOnlyOnce()
             throw InsertionError.clipboardOnly
         }
 
         guard simulatePasteShortcut() else {
-            throw InsertionError.insertionFailed
+            logger.log(.insertion, "Auto-paste unavailable: failed to post Cmd+V (clipboard-only)")
+            PasteFailureNotifier.shared.notifyClipboardOnlyOnce()
+            throw InsertionError.clipboardOnly
         }
         logger.log(.insertion, "Pasteboard insertion triggered for \(frontmost.bundleIdentifier ?? "unknown")")
 
@@ -82,12 +85,6 @@ final class PasteboardInserter: TextInserter {
         keyDown.post(tap: .cghidEventTap)
         keyUp.post(tap: .cghidEventTap)
         return true
-    }
-
-    private func notifyAccessibilityMissingOnce() {
-        guard !Self.didNotifyAccessibilityMissing else { return }
-        Self.didNotifyAccessibilityMissing = true
-        NotificationPresenter.shared.notify(title: "Dicta", body: "Enable Accessibility to paste automatically.")
     }
 
     private func snapshotPasteboardItems(from pasteboard: NSPasteboard) -> [[NSPasteboard.PasteboardType: Data]] {

@@ -5,6 +5,13 @@ protocol TextInserter {
     func insert(text: String, restoreClipboard: Bool) async throws
 }
 
+enum InsertResult {
+    case pasted
+    case attempted
+    case clipboardOnly
+    case failed(Error)
+}
+
 enum InsertionError: Error, LocalizedError {
     case accessibilityDenied
     case focusedElementUnavailable
@@ -38,31 +45,32 @@ final class InsertionManager {
         self.logger = logger
     }
 
-    func insert(text: String, mode: InsertionMode, restoreClipboard: Bool, targetApp: FrontmostApp? = nil) async throws {
+    func insert(text: String, mode: InsertionMode, restoreClipboard: Bool, targetApp: FrontmostApp? = nil) async -> InsertResult {
         switch mode {
         case .pasteboard:
             logger.log(.insertion, "Insertion mode: pasteboard")
             do {
                 try await pasteboardInserter.insert(text: text, restoreClipboard: restoreClipboard)
-                logger.log(.insertion, "Insertion result: pasted")
+                logger.log(.insertion, "Insertion result: attempted")
+                return .attempted
             } catch {
                 if let insertionError = error as? InsertionError, insertionError == .clipboardOnly {
-                    logger.log(.insertion, "Insertion result: clipboard-only")
-                    throw error
-                }
-                if let insertionError = error as? InsertionError,
-                   (insertionError == .frontmostIsDicta || insertionError == .noFocusedApp) {
-                    logger.log(.insertion, "Insertion failed: \(error.localizedDescription)")
-                    throw error
+                    logger.log(.insertion, "Insertion result: clipboardOnly")
+                    return .clipboardOnly
                 }
                 if AXIsProcessTrusted() {
                     logger.log(.insertion, "Pasteboard insert failed, attempting accessibility fallback: \(error.localizedDescription)")
-                    try await accessibilityInserter.insert(text: text, restoreClipboard: restoreClipboard)
-                    logger.log(.insertion, "Insertion result: pasted")
-                } else {
-                    logger.log(.insertion, "Insertion failed: \(error.localizedDescription)")
-                    throw error
+                    do {
+                        try await accessibilityInserter.insert(text: text, restoreClipboard: restoreClipboard)
+                        logger.log(.insertion, "Insertion result: pasted")
+                        return .pasted
+                    } catch {
+                        logger.log(.insertion, "Insertion failed: \(error.localizedDescription)")
+                        return .failed(error)
+                    }
                 }
+                logger.log(.insertion, "Insertion failed: \(error.localizedDescription)")
+                return .failed(error)
             }
         case .accessibility:
             pasteboardInserter.copyToClipboard(text: text)
@@ -70,10 +78,21 @@ final class InsertionManager {
                 logger.log(.insertion, "Insertion mode: accessibility")
                 try await accessibilityInserter.insert(text: text, restoreClipboard: restoreClipboard)
                 logger.log(.insertion, "Insertion result: pasted")
+                return .pasted
             } catch {
                 logger.log(.insertion, "Accessibility insert failed, falling back to pasteboard: \(error.localizedDescription)")
-                try await pasteboardInserter.insert(text: text, restoreClipboard: restoreClipboard)
-                logger.log(.insertion, "Insertion result: pasted")
+                do {
+                    try await pasteboardInserter.insert(text: text, restoreClipboard: restoreClipboard)
+                    logger.log(.insertion, "Insertion result: attempted")
+                    return .attempted
+                } catch {
+                    if let insertionError = error as? InsertionError, insertionError == .clipboardOnly {
+                        logger.log(.insertion, "Insertion result: clipboardOnly")
+                        return .clipboardOnly
+                    }
+                    logger.log(.insertion, "Insertion failed: \(error.localizedDescription)")
+                    return .failed(error)
+                }
             }
         }
     }
