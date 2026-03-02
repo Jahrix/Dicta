@@ -13,7 +13,7 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
     }
 
     func transcribe(url: URL, locale: Locale, preferOnDevice: Bool) async throws -> TranscriptionResult {
-        let text = try await transcribeFile(url: url, locale: locale, prompt: settings.customPrompt)
+        let text = try await transcribeFile(url: url, locale: locale, prompt: settings.effectivePrompt())
         return TranscriptionResult(text: text, confidence: nil, segmentDurations: nil)
     }
 
@@ -21,10 +21,18 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
         let binaryPath = try resolveBinaryPath()
         let modelPath = try resolveModelPath()
         let finalTimeoutSeconds = settings.transcriptionTimeoutSeconds > 0 ? settings.transcriptionTimeoutSeconds : 30.0
-        let partialTimeoutSeconds = min(15.0, finalTimeoutSeconds)
+        let partialTimeoutSetting = settings.partialTranscriptionTimeoutSeconds > 0 ? settings.partialTranscriptionTimeoutSeconds : 12.0
+        let partialTimeoutSeconds = min(partialTimeoutSetting, finalTimeoutSeconds)
         let supportedFlags = await loadSupportedFlags(binaryPath: binaryPath, timeoutSeconds: partialTimeoutSeconds)
 
-        logger.log(.transcription, "LocalWhisper start (binary: \(binaryPath), model: \(modelPath), locale: \(locale.identifier))")
+        let preset = SettingsModel.TranscriptionPreset(rawValue: settings.transcriptionPreset) ?? .accuracy
+        let presetDefaults = SettingsModel.presetDefaults(for: preset)
+        let beamSize = settings.beamSize > 0 ? settings.beamSize : presetDefaults.beamSize
+        let temperature = settings.temperature >= 0.0 && settings.temperature <= 1.0 ? settings.temperature : presetDefaults.temperature
+        let bestOf = settings.bestOf > 0 ? settings.bestOf : presetDefaults.bestOf
+        let binaryLabel = redactedPath(binaryPath)
+        let modelLabel = redactedPath(modelPath)
+        logger.log(.transcription, "LocalWhisper preset=\(preset.rawValue) beam=\(beamSize) temp=\(String(format: \"%.2f\", temperature)) bestOf=\(bestOf) model=\(modelLabel) binary=\(binaryLabel) locale=\(locale.identifier)")
 
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("DictaWhisper-\(UUID().uuidString)", isDirectory: true)
         try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -39,15 +47,12 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
         if let flag = supportedFlags.languageFlag, !language.isEmpty {
             arguments.append(contentsOf: [flag, language])
         }
-        let beamSize = max(1, settings.beamSize)
         if let flag = supportedFlags.beamSizeFlag {
             arguments.append(contentsOf: [flag, String(beamSize)])
         }
-        let temperature = min(max(settings.temperature, 0.0), 1.0)
         if let flag = supportedFlags.temperatureFlag {
             arguments.append(contentsOf: [flag, String(temperature)])
         }
-        let bestOf = max(1, settings.bestOf)
         if let flag = supportedFlags.bestOfFlag {
             arguments.append(contentsOf: [flag, String(bestOf)])
         }
@@ -132,6 +137,20 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
     }
 
     private func resolveModelPath() throws -> String {
+        let tier = settings.selectedModelTier
+        if let resolvedURL = ModelCatalog.resolveModelURL(tier: tier, settings: settings) {
+            let resolvedPath = resolvedURL.path
+            logger.log(.transcription, "LocalASR model tier: \(tier.displayName) (path: \(redactedPath(resolvedPath)))")
+            return resolvedPath
+        }
+
+        logger.log(.transcription, "Model tier \(tier.displayName) unavailable. \(ModelCatalog.missingModelMessage) Falling back to legacy model path.")
+        let legacyPath = try resolveLegacyModelPath()
+        logger.log(.transcription, "LocalASR model fallback path: \(redactedPath(legacyPath))")
+        return legacyPath
+    }
+
+    private func resolveLegacyModelPath() throws -> String {
         if let resourceURL = Bundle.main.resourceURL {
             let bundledModel = resourceURL.appendingPathComponent("models/ggml-small.en.bin").path
             if FileManager.default.fileExists(atPath: bundledModel) {
@@ -243,6 +262,11 @@ final class LocalWhisperCppEngine: TranscriptionEngine {
             }
         }
         return output.joined(separator: " ")
+    }
+
+    private func redactedPath(_ path: String) -> String {
+        let name = URL(fileURLWithPath: path).lastPathComponent
+        return name.isEmpty ? "<path>" : name
     }
 
     private func withTimeout<T>(seconds: Double, timeoutError: Error, operation: @escaping () throws -> T) async throws -> T {
